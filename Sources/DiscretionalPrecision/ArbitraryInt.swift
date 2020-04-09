@@ -375,7 +375,7 @@ public struct ArbitraryInt: SignedInteger, CustomDebugStringConvertible, Lossles
     internal subscript(unsafe i: Words.Index) -> Words.Element { words.indices.contains(i) ? words[i] : 0 } // zero for ANY out of bounds index, use with care
     internal subscript<R: BoundedRangeExpression>(unsafe r: R) -> FlattenSequence<[AnySequence<Words.Element>]> where R.Bound == Words.Index { // pads out of bound edges with zeroes on both sides, use with care
         [AnySequence(repeatElement(0, count: Swift.max(words.startIndex - r.lowerBound, 0))),
-            AnySequence(words[r.strictlyRelative(to: words)]),
+            AnySequence(words[r.relative(to: words).clamped(to: words.startIndex..<words.endIndex)]),
         AnySequence(repeatElement(0, count: Swift.max(r.upperBound - words.endIndex - 1, 0)))].joined()
     }
     
@@ -712,34 +712,53 @@ public struct ArbitraryInt: SignedInteger, CustomDebugStringConvertible, Lossles
         return -(x + .one)
     }
 
-    /// For simplicity's sake, even if it's not necessarily correct, from the
-    /// perspective of the bitwise operations, our value is unsigned. Otherwise
-    /// considerable ambiguity can arise in what the results should be.
+    /// Perform a bitwise AND operation of all significant bits of `lhs` with
+    /// all significant bits of `rhs`, padding with zeroes on the MSB end if one
+    /// has more bits than the other, and recalculating the total bit width of
+    /// the result based on the highest bit still set therein. The operation is
+    /// performed on the raw bits as if both values were unsigned. The sign of
+    /// the result is the outcome of taking the bitwise AND of both inputs' sign
+    /// flags, represened as single sign bits (in other words, the result is
+    /// positive unless both inputs were negative). An exception exists if the
+    /// magnitude of the result is zero; "negative zero" is not a valid
+    /// representation.
     public static func &= (lhs: inout ArbitraryInt, rhs: ArbitraryInt) {
-        lhs.words = zip(lhs.words.rpad(with: 0, upTo: rhs.words.count), rhs.words.rpad(with: 0, upTo: lhs.words.count)).map { $0 & $1 }.normalize()
+        lhs.words = (0..<Swift.max(lhs.words.count, rhs.words.count)).map { lhs[infinite: $0] & rhs[infinite: $0] }.normalize()
         lhs.bitWidth = lhs.bitWidthAsTotalWordBitsMinusLeadingZeroes()
-        lhs.sign = (lhs.words.count == 1 && lhs[0] == 0 ? false : lhs.sign)
+        lhs.sign = lhs.sign && rhs.sign && lhs != .zero
     }
 
-    /// For simplicity's sake, even if it's not necessarily correct, from the
-    /// perspective of the bitwise operations, our value is unsigned. Otherwise
-    /// considerable ambiguity can arise in what the results should be.
+    /// Perform a bitwise OR operation of all significant bits of `lhs` with all
+    /// significant bits of `rhs`, padding with zeroes on the MSB end if one has
+    /// more bits than the other, and recalculating the total bit width of the
+    /// result based on the highest bit still set therein. The operation is
+    /// performed on the raw bits as if both values were unsigned. The sign of
+    /// the result is the outcome of taking the bitwise OR of both inputs' sign
+    /// flags, represened as single sign bits (in other words, the result is
+    /// negative unless both inputs were positive). An exception exists if the
+    /// magnitude of the result is zero; "negative zero" is not a valid
+    /// representation.
     public static func |= (lhs: inout ArbitraryInt, rhs: ArbitraryInt) {
-        lhs.words = zip(lhs.words.rpad(with: 0, upTo: rhs.words.count), rhs.words.rpad(with: 0, upTo: lhs.words.count)).map { $0 | $1 }.normalize()
+        lhs.words = (0..<Swift.max(lhs.words.count, rhs.words.count)).map { lhs[infinite: $0] | rhs[infinite: $0] }.normalize()
         lhs.bitWidth = lhs.bitWidthAsTotalWordBitsMinusLeadingZeroes()
-        lhs.sign = (lhs.words.count == 1 && lhs[0] == 0 ? false : lhs.sign)
+        lhs.sign = (lhs.sign || rhs.sign) && lhs != .zero
     }
     
-    /// For simplicity's sake, even if it's not necessarily correct, from the
-    /// perspective of the bitwise operations, our value is unsigned. Otherwise
-    /// considerable ambiguity can arise in what the results should be.
+    /// Perform a bitwise XOR operation of all significant bits of `lhs` with all
+    /// significant bits of `rhs`, padding with zeroes on the MSB end if one has
+    /// more bits than the other, and recalculating the total bit width of the
+    /// result based on the highest bit still set therein. The operation is
+    /// performed on the raw bits as if both values were unsigned. The sign of
+    /// the result is the outcome of taking the bitwise XOR of both inputs' sign
+    /// flags, represened as single sign bits (in other words, the result is
+    /// negative if the signs of the inputs differ). An exception exists if the
+    /// magnitude of the result is zero; "negative zero" is not a valid
+    /// representation.
     public static func ^= (lhs: inout ArbitraryInt, rhs: ArbitraryInt) {
-        lhs.words = zip(lhs.words.rpad(with: 0, upTo: rhs.words.count), rhs.words.rpad(with: 0, upTo: lhs.words.count)).map { $0 ^ $1 }.normalize()
+        lhs.words = (0..<Swift.max(lhs.words.count, rhs.words.count)).map { lhs[infinite: $0] ^ rhs[infinite: $0] }.normalize()
         lhs.bitWidth = lhs.bitWidthAsTotalWordBitsMinusLeadingZeroes()
-        lhs.sign = (lhs.words.count == 1 && lhs[0] == 0 ? false : lhs.sign)
+        lhs.sign = (lhs.sign != rhs.sign) && lhs != .zero
     }
-    
-    private var isEvenGTE2: Bool { self != .zero && self.words[0] & 0x1 == 0 }
     
     /// `ax + by = v` where `v = gcd(x, y)`, extended binary algorithm.
     public func gcd_bin(_ rhs: ArbitraryInt) -> (a: ArbitraryInt, b: ArbitraryInt, v: ArbitraryInt) {
@@ -755,13 +774,13 @@ public struct ArbitraryInt: SignedInteger, CustomDebugStringConvertible, Lossles
         debug(.GCD, state: ["u": u, "v": v, "A": 1, "B": 0, "C": 0, "D": 1])
         repeat {
             assert(u > .zero)
-            while u.isEvenGTE2 {
+            while u.words[0] & 0x1 == 0 {
                 u >>= 1
                 (A, B) = ((A + ((A & 0x1) == 0 && (B & 0x1) == 0 ? 0 : y)) >> 1, (B - ((A & 0x1) == 0 && (B & 0x1) == 0 ? 0 : x)) >> 1)
                 debug(.GCD, state: ["u": u, "A": A, "B": B], "u%2=0")
             }
             assert(v > .zero)
-            while v.isEvenGTE2 {
+            while v.words[0] & 0x1 == 0 {
                 v >>= 1
                 (C, D) = ((C + ((C & 0x1) == 0 && (D & 0x1) == 0 ? 0 : y)) >> 1, (D - ((C & 0x1) == 0 && (D & 0x1) == 0 ? 0 : x)) >> 1)
                 debug(.GCD, state: ["v": v, "C": C, "D": D], "v%2=0")
@@ -1038,14 +1057,6 @@ extension FixedWidthInteger where Self: UnsignedInteger {
 
 extension BidirectionalCollection where Element: BinaryInteger {
     
-    /// If the receiver's `count` is less than the desired count, return a
-    /// sequence formed by appending `desiredCount - count` copies of `value`
-    /// to `self`. Returns `self` if the count equals or exceeds the desired
-    /// number already.
-    public func rpad(with value: Element, upTo desiredCount: Int) -> Array<Element> {
-        self + Array(repeating: value, count: Swift.max(0, desiredCount - self.count))
-    }
-    
     public func normalize() -> Array<Element> {
         var zeroIdx = self.index(before: self.endIndex)
         while zeroIdx > self.startIndex && self[zeroIdx] == 0 { zeroIdx = self.index(before: zeroIdx) }
@@ -1055,13 +1066,4 @@ extension BidirectionalCollection where Element: BinaryInteger {
     
     func hexEncodedString() -> String { "[\(self.map { $0.hexEncodedString() }.joined(separator: ", "))]" }
     
-}
-
-extension RangeExpression {
-
-    func strictlyRelative<C>(to collection: C) -> Range<Self.Bound> where C : Collection, Self.Bound == C.Index {
-        return self.relative(to: collection).clamped(to: collection.startIndex..<collection.endIndex)
-    }
-
-}
 }
