@@ -531,19 +531,19 @@ public struct ArbitraryInt: SignedInteger, CustomDebugStringConvertible, Lossles
         // if subtrahend is negative, regardless of minuend, conversion to addition takes effect
         //  5 -  2 -> normal, 2 -  5 -> -(5 - 2), -5 -  2 -> -(2 - -5) -> -(2 + 5), 5 - -2 -> (5 + 2)
         // -2 - -5 -> (-2 + 5), -5 - -2 -> -(-2 - -5) -> -(-2 + 5)
-        // Therefore subtration per below may always assume positive numbers and last-place borrowing.
+        // Therefore subtraction per below may always assume positive numbers and last-place borrowing.
 
-        var result = ArbitraryInt.zero, borrow = false
+        var result = ArbitraryInt.zero, borrow = Words.Element.zero, r = Words.Element.zero
         
         // Subtract each group of bits in sequence with propagated borrow.
         result.words = (0..<Swift.max(lhs.words.count, rhs.words.count)).map {
             lhs.debug(.Diff, state: ["lWord": lhs[infinite: $0].hexEncodedString(), "rWord": rhs[infinite: $0].hexEncodedString(), "borrow": borrow])
-            let r = lhs[infinite: $0].subtractingWithBorrow(rhs[infinite: $0], borrow: &borrow)
+            (borrow, r) = rhs[infinite: $0].subtractingPreservingCarry(from: lhs[infinite: $0], carryin: borrow)
             lhs.debug(.Diff, state: ["lWord - rWord": r.hexEncodedString(), "borrow": borrow])
             return r
         }
         // Given rhs < lhs (already checked), taking a borrow out of the lsat word is illegal.
-        assert(!borrow)
+        assert(borrow == .zero)
         // Drop all _trailing_ words of the result that are zero. Ensure at least one remains. TODO: More like what + does.
         result.words = result.words.normalize()
         // Calculate result bit width as the total words bit count minus leading zero bits of last word. Zero value has one bit.
