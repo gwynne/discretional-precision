@@ -161,20 +161,27 @@ extension ClosedRange: BoundedRangeExpression where Bound: Strideable, Bound.Str
 public struct ArbitraryInt: SignedInteger, CustomDebugStringConvertible, LosslessStringConvertible {
 
     /// We reimplement `zero` in terms of a static instance via our internal
-    /// memberwise initializer, which is noticeably faster than the default
-    /// implementation on `AdditiveArithmetic`, which routes through the
-    /// `ExpressibleByIntegerLiteral` .
+    /// memberwise initializer. This turns out ot be MUCH faster than the
+    /// default implementation on `AdditiveArithmetic`, which invokes the
+    /// `ExpressibleByIntegerLiteral` conformance.
     /// See `AdditiveArithmetic.zero`.
     public static let zero: ArbitraryInt = .init(words: [0], sign: false, bitWidth: 1)
     
-    /// A `one` that's probably a bit faster than getting it from `Int`.
+    /// Our own `.zero` is much faster than converting `0` to an instance of us.
+    /// `1` is another constant we use a LOT, so make sure we have a nice ready-
+    /// made instance of that as well.
     public static let one: ArbitraryInt = .init(words: [1], sign: false, bitWidth: 1)
     
-    /// A `minusOne` that's probably a bit faster than getting it from `Int`.
+    /// As `.zero` and `.one` are very fast compared to `ArbitraryInt(0)` and
+    /// `ArbitraryInt(1)`, so `.minuxOne` is to `ArbitraryInt(-1)`, and this is
+    /// another constant we use often.
     public static let minusOne: ArbitraryInt = .init(words: [1], sign: true, bitWidth: 1)
     
-    /// We implement a signed representation. There is, in fact, no
-    /// corresponding unsigned representation.
+    /// We implement a signed representation. Unlike the fixed-width integer
+    /// types, this type has no unsigned counterpart; the effective range of an
+    /// instance of this type is unlimited, and the storage requirements of
+    /// positive and negative values are identical, so a separate unsigned type
+    /// would serve very little purpose.
     /// See `BinaryInteger.isSigned`.
     @inlinable public static var isSigned: Bool { true }
     
@@ -818,25 +825,6 @@ public struct ArbitraryInt: SignedInteger, CustomDebugStringConvertible, Lossles
         debug(.ModMul, state: ["xyR^-1 mod m": A])
         return A
     }
-    /*
-    public func montgomeryReducedProduct(with rhs: ArbitraryInt, mod m: ArbitraryInt, modPrime mP: ArbitraryInt? = nil) -> ArbitraryInt {
-        debug(.ModMul, state: ["x": self, "y": rhs, "m": m, "m'": mP ?? .zero])
-        guard let mP = mP ?? (-m).inverse(modulo: Self.radix) else { return .minusOne }
-        let x = self, y = rhs, y0 = y & (Self.radix - 1), n = m.words.count
-        var A = ArbitraryInt.zero
-        debug(.ModMul, state: ["x": x, "y": y, "n": n, "m'": mP])
-        for i in 0..<n {
-            let xi: ArbitraryInt = (i < x.words.count ? ArbitraryInt(x.words[i]) : .zero)
-            let u: ArbitraryInt = (((A & (Self.radix - 1)) + xi * y0) * mP) & (Self.radix - 1)
-            A = (A + xi * y + u * m) >> Self.radixBitWidth
-            debug(.ModMul, state: ["i": i, "u": ArbitraryInt(u), "A": A])
-        }
-        if A >= m { A -= m }
-        if A < .zero { A += m }
-        debug(.ModMul, state: ["xyR^-1 mod m": A])
-        return A
-    }
-    */
     
     /// Perform Montgomery exponentiation, return `x^e mod m`.
     public func montgomeryExponentiation(e: ArbitraryInt, m: ArbitraryInt) -> ArbitraryInt {
@@ -1040,9 +1028,6 @@ extension FixedWidthInteger where Self: UnsignedInteger {
         // Subtract with overflow reporting; the resulting partial value is the correct output.
         let (output, newBorrow) = lhs.subtractingReportingOverflow(rhs)
         
-        //print("self = \(self.hexEncodedString()), lhs = \(lhs.hexEncodedString()), rhs = \(rhs.hexEncodedString()), output = \(output.hexEncodedString())")
-        //print("borrow = \(borrow), newBorrow = \(newBorrow)")
-
         // Set borrow on output if it was set on input and self is zero, or if overflow occurred.
         borrow = (borrow && self == 0) || newBorrow
         
@@ -1061,22 +1046,11 @@ extension BidirectionalCollection where Element: BinaryInteger {
         self + Array(repeating: value, count: Swift.max(0, desiredCount - self.count))
     }
     
-    /// If the receiver's `count` is less than the desired count, return a
-    /// sequence formed by PREpending `desiredCount - count` copies of `value`
-    /// to `self`. Returns `self` if the count equals or exceeds the desired
-    /// number already.
-    public func lpad(with value: Element, upTo desiredCount: Int) -> Array<Element> {
-        Array(repeating: value, count: Swift.max(0, desiredCount - self.count)) + self
-    }
-    
     public func normalize() -> Array<Element> {
         var zeroIdx = self.index(before: self.endIndex)
         while zeroIdx > self.startIndex && self[zeroIdx] == 0 { zeroIdx = self.index(before: zeroIdx) }
         if zeroIdx == self.startIndex && self[self.startIndex] == 0 { return [0] }
         return Array(self[self.startIndex...zeroIdx])
-        //guard let zeroes = self.reversed().firstIndex(where: { $0 != 0 }) else { return [0] }
-        //return Array(self.dropLast(zeroes))
-        //Array(self.reversed().drop(while: { $0 == 0 }).reversed()).rpad(with: 0, upTo: 1)
     }
     
     func hexEncodedString() -> String { "[\(self.map { $0.hexEncodedString() }.joined(separator: ", "))]" }
@@ -1090,84 +1064,4 @@ extension RangeExpression {
     }
 
 }
-
-// Version of + operator less optimized for memory but somewhat more readable:
-/*
-static func + (lhs: ArbitraryInt, rhs: ArbitraryInt) -> ArbitraryInt {
-    let lhsWordsPad = lhs.words.rpad(with: 0, upTo: rhs.words.count), rhsWordsPad = rhs.words.rpad(with: 0, upTo: lhs.words.count)
-    var result = ArbitraryInt()
-    // Add each group of bits in sequence, propagating the carry flag.
-    result.words = zip(lhsWordsPad, rhsWordsPad).map { $0.addingWithCarry($1, carry: &carry) }
-    // If last add carried out of the previous highest bit, add a new one.
-    if carry { result.words.append(1) }
-    // Width of the result will be the greater of the addends', plus the value of the carry flag.
-    // (except, not so much)
-    result.bitWidth = result.bitWidthAsTotalWordBitsMinusLeadingZeroes() //max(lhs.bitWidth, rhs.bitWidth) + (carry ? 1 : 0)
-    // Cross-check that the width value makes sense by re-calculating it as the number of storage words
-    // times their width, minus the number of unused bits on the final word.
-    //assert(result.bitWidthAsTotalWordBitsMinusLeadingZeroes() == result.bitWidth)
-    return result
 }
-*/
-
-// Failed implementation of the extended binary GCD algorithm.
-/*
-func gcd(_ rhs: ArbitraryInt) -> (a: ArbitraryInt, b: ArbitraryInt, v: ArbitraryInt) {
-    var g = ArbitraryInt.one, x = self, y = rhs
-    
-    while x & 0x1 == 0 && x != 0 && y & 0x1 == 0 && y != 0 {
-        (x, y, g) = (x >> 1, y >> 1, g << 1)
-    }
-    
-    var u = x, v = y, A = ArbitraryInt.one, B = ArbitraryInt.zero, C = ArbitraryInt.zero, D = ArbitraryInt.one
-    
-    print("GCD: x = \(x), y = \(y)")
-    repeat {
-        while (u & 0x1) == 0 && u != 0 {
-            u >>= 1
-            if (A - B) & 0x1 == 0 && A != 0 && B != 0 {
-                (A, B) = (A >> 1, B >> 1)
-            } else {
-                (A, B) = ((A + y) >> 1, (B - x) >> 1)
-            }
-            print("GCD: u = \(u), A = \(A), B = \(B)")
-        }
-        while (v & 0x1) == 0 && v != 0 {
-            v >>= 1
-            if (C - D) & 0x1 == 0 && C != 0 && D != 0 {
-                (C, D) = (C >> 1, D >> 1)
-            } else {
-                (C, D) = ((C + y) >> 1, (D - x) >> 1)
-            }
-            print("GCD: v = \(v), C = \(C), D = \(D), C & 0x1 = \(C & 0x1), D & 0x1 = \(D & 0x1), C == 0 \(C == 0), D == 0 \(D == 0)")
-        }
-        if u >= v {
-            (u, A, B) = (u - v, A - C, B - D)
-        } else {
-            (v, C, D) = (v - u, C - A, D - B)
-        }
-        print("GCD: u = \(u), v = \(v), A = \(A), B = \(B), C = \(C), D = \(D)")
-    } while u != 0
-    return (a: C, b: D, v: g * v)
-}
-*/
-
-// Version of modular multiplicative inverse that works but can't handle arbitrary precision.
-/*
-    public func inverse(modulo m: ArbitraryInt) -> ArbitraryInt? {
-        guard m > 1 else { return nil }
-        debug(.ModInv, state: ["x": self, "m": m])
-        var t = ArbitraryInt.zero, tn = ArbitraryInt.one, r = m, rn = self
-        while rn != 0 {
-            let q = r / rn
-            debug(.ModInv, state: ["t": t, "tn": tn, "r": r, "rn": rn, "q": q])
-            (t, tn) = (tn, t - q * tn)
-            (r, rn) = (rn, r - q * rn)
-        }
-        debug(.ModInv, state: ["t": t, "tn": tn, "r": r, "rn": rn])
-        if r > 1 { return nil }
-        if t < 0 { t += m }
-        debug(.ModInv, state: ["inv": t])
-        return t
-    }
-*/
