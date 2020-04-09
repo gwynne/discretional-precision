@@ -1091,40 +1091,6 @@ extension RangeExpression {
 
 }
 
-extension BinaryInteger {
-    public func hexEncodedString(prefix: Bool = true) -> String { "\(prefix ? "0x" : "")\(String(decoding: self.hexEncodedBytes(), as: Unicode.ASCII.self))" }
-    public func hexEncodedBytes() -> [UInt8] {
-        stride(from: 0, to: self.bitWidth, by: UInt8.bitWidth).reversed().map { UInt8(truncatingIfNeeded: self >> $0) }.hexEncodedBytes()
-    }
-}
-
-fileprivate let hexTable: [UInt8] = [0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x61, 0x62, 0x63, 0x64, 0x65, 0x66]
-
-extension Sequence where Element == UInt8 {
-    public func hexEncodedString() -> String { String(decoding: self.hexEncodedBytes(), as: Unicode.ASCII.self) }
-
-    public func hexEncodedBytes() -> [UInt8] {
-        var result: [UInt8] = .init()
-        result.reserveCapacity(self.underestimatedCount << 1) // best guess
-        return self.reduce(into: result) { output, byte in
-            output.append(hexTable[numericCast(byte >> 4)])
-            output.append(hexTable[numericCast(byte & 0x0f)])
-        }
-    }
-}
-
-extension Collection where Element == UInt8 {
-    public func hexEncodedBytes() -> [UInt8] {
-        return .init(unsafeUninitializedCapacity: self.count << 1) { buffer, outCount in
-            for byte in self {
-                (buffer[outCount + 0], buffer[outCount + 1]) = (hexTable[numericCast(byte >> 4)], hexTable[numericCast(byte & 0x0f)])
-                outCount += 2
-            }
-        }
-    }
-}
-
-
 // Version of + operator less optimized for memory but somewhat more readable:
 /*
 static func + (lhs: ArbitraryInt, rhs: ArbitraryInt) -> ArbitraryInt {
