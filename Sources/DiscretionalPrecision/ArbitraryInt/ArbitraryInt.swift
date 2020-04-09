@@ -404,8 +404,8 @@ public struct ArbitraryInt: SignedInteger, LosslessStringConvertible {
                 q[j] = res.quotient.magnitude
                 debug(.Quot, state: ["x[i-1...i]/y[t]": "\(res.quotient.hexEncodedString()) REM \(res.remainder.hexEncodedString())", "q[j]": q[j].hexEncodedString()])
             }
-            let y2 = ArbitraryInt(words: Array(y[unsafe: (t - 1)...t]).normalize(), sign: false)
-            let x3 = ArbitraryInt(words: Array(x[unsafe: (i - 2)...i]).normalize(), sign: false)
+            let y2 = ArbitraryInt(words: Array(y[unsafe: (t - 1)...t]).normalized(), sign: false)
+            let x3 = ArbitraryInt(words: Array(x[unsafe: (i - 2)...i]).normalized(), sign: false)
             debug(.Quot, state: ["y2=y[t-1...t]": y2, "x3=x[i-2...i]": x3])
             while ArbitraryInt(q[j]) * y2 > x3 {
                 q[j] -= 1
@@ -421,7 +421,7 @@ public struct ArbitraryInt: SignedInteger, LosslessStringConvertible {
             }
         }
         let λr = x, r = λr >> λ
-        let qq = ArbitraryInt(words: q.normalize(), sign: self.sign != rhs.sign && q.normalize() != [0])
+        let qq = ArbitraryInt(words: q.normalized(), sign: self.sign != rhs.sign && q.normalized() != [0])
         debug(.Quot, state: ["λr": λr, "r": r, "q": q.hexEncodedString()])
         debug(.Quot, state: ["quotient": qq, "remainder": ArbitraryInt(words: r.words, sign: self.sign)])
         return (quotient: qq, remainder: ArbitraryInt(words: r.words, sign: self.sign))
@@ -555,7 +555,7 @@ public struct ArbitraryInt: SignedInteger, LosslessStringConvertible {
         for i in 0..<z { (carry, result[i]) = lhs[infinite: i].addedPreservingCarry(to: rhs[infinite: i], carryin: carry) }
         lhs.debug(.Sum, state: ["result[0..<z]": result.hexEncodedString(), "carry": carry])
         if carry != .zero { result.append(carry) }
-        assert(result.normalize() == result)
+        assert(result.normalized() == result)
         lhs.debug(.Sum, state: ["sum": ArbitraryInt(words: result, sign: false)])
         return ArbitraryInt(words: result, sign: false)
     }
@@ -699,7 +699,7 @@ public struct ArbitraryInt: SignedInteger, LosslessStringConvertible {
     /// magnitude of the result is zero; "negative zero" is not a valid
     /// representation.
     public static func &= (lhs: inout ArbitraryInt, rhs: ArbitraryInt) {
-        lhs.words = (0..<Swift.max(lhs.words.count, rhs.words.count)).map { lhs[infinite: $0] & rhs[infinite: $0] }.normalize()
+        lhs.words = (0..<Swift.max(lhs.words.count, rhs.words.count)).map { lhs[infinite: $0] & rhs[infinite: $0] }.normalized()
         lhs.bitWidth = lhs.bitWidthAsTotalWordBitsMinusLeadingZeroes()
         lhs.sign = lhs.sign && rhs.sign && lhs != .zero
     }
@@ -715,7 +715,7 @@ public struct ArbitraryInt: SignedInteger, LosslessStringConvertible {
     /// magnitude of the result is zero; "negative zero" is not a valid
     /// representation.
     public static func |= (lhs: inout ArbitraryInt, rhs: ArbitraryInt) {
-        lhs.words = (0..<Swift.max(lhs.words.count, rhs.words.count)).map { lhs[infinite: $0] | rhs[infinite: $0] }.normalize()
+        lhs.words = (0..<Swift.max(lhs.words.count, rhs.words.count)).map { lhs[infinite: $0] | rhs[infinite: $0] }.normalized()
         lhs.bitWidth = lhs.bitWidthAsTotalWordBitsMinusLeadingZeroes()
         lhs.sign = (lhs.sign || rhs.sign) && lhs != .zero
     }
@@ -731,7 +731,7 @@ public struct ArbitraryInt: SignedInteger, LosslessStringConvertible {
     /// magnitude of the result is zero; "negative zero" is not a valid
     /// representation.
     public static func ^= (lhs: inout ArbitraryInt, rhs: ArbitraryInt) {
-        lhs.words = (0..<Swift.max(lhs.words.count, rhs.words.count)).map { lhs[infinite: $0] ^ rhs[infinite: $0] }.normalize()
+        lhs.words = (0..<Swift.max(lhs.words.count, rhs.words.count)).map { lhs[infinite: $0] ^ rhs[infinite: $0] }.normalized()
         lhs.bitWidth = lhs.bitWidthAsTotalWordBitsMinusLeadingZeroes()
         lhs.sign = (lhs.sign != rhs.sign) && lhs != .zero
     }
@@ -919,7 +919,7 @@ extension ArbitraryInt {
 
 extension BidirectionalCollection where Element: BinaryInteger {
     
-    public func normalize() -> Array<Element> {
+    public func normalized() -> Array<Element> {
         var zeroIdx = self.index(before: self.endIndex)
         while zeroIdx > self.startIndex && self[zeroIdx] == 0 { zeroIdx = self.index(before: zeroIdx) }
         if zeroIdx == self.startIndex && self[self.startIndex] == 0 { return [0] }
