@@ -15,14 +15,16 @@ import CDiscretionalClangBuiltins
 /// gained by doing something so recursive.)
 extension FixedWidthInteger where Self: UnsignedInteger {
 
-    /// Perform a "full-width" addition, returning the result of adding two
-    /// single-precision values as a double-precision value, represented by a
-    /// `(high, low)` pair. The behavior and convention match one-to-one with
-    /// the semantics of the standard library's `multipliedFullWidth(ny:)`
-    /// method, save that the "high" word of the result will always be exactly
-    /// zero or exactly one. As with that method, this one can be chained to
-    /// add values of arbitrary precision by adding the high word of the result
-    /// to the next word of input, ad infinitum.
+    /// Perform a "full-width" addition, as it were, returning the result of
+    /// adding two single-precision values as a pair of the single-precision
+    /// result and the one-bit carry/overflow flag, which can be conveniently
+    /// conceptualized as a second single-precision value carrying additional
+    /// bits of result. The behavior and convention match one-to-one with the
+    /// semantics of the standard library's `multipliedFullWidth(ny:)` method,
+    /// save that the "high" word of the result will always be exactly zero or
+    /// exactly one. As with that method, this one can be chained to add values
+    /// of arbitrary precision by adding the high word of the result to the next
+    /// word of input, ad infinitum.
     ///
     /// - Note: This implementation is generic over any `FixedWidthInteger`
     ///   which is either not one of the builtin types (all of which get their
@@ -31,22 +33,24 @@ extension FixedWidthInteger where Self: UnsignedInteger {
     ///   figure out to invoke the more specific version.
     ///
     /// - Parameter other: The value to add to `self`.
-    /// - Parameter carryin: An optionally chained "carry in" value. If chaining
-    ///   multiple-precision adds, this would typically be the `high` word
-    ///   returned from the previous invocation.
-    /// - Returns: A tuple consisting of the "high" word of the result (the
-    ///   carryout, expressed as an instance of `Self`) and the "low" word of
-    ///   the result (the sum modulo `Self.max + 1`).
-    public func addedFullWidth(to other: Self, carryin: Self = Self.zero) -> (high: Self, low: Self.Magnitude) {
+    /// - Parameter carryin: A chained "carry in" value. If chaining multiple-
+    ///   precision adds, this should usually be the `carry` result word from
+    ///   the previous related invocation of this method.
+    /// - Returns: A tuple consisting of the "carry" word of the result (the
+    ///   carryout, expressed as an instance of `Self`, also sometimes called
+    ///   the "hig" word) and the "low" word of the result (the sum modulo
+    ///   `Self.max + 1`, suitable for storing as the next complete digit of
+    ///   an overall multiprecision sum).
+    public func addedPreservingCarry(to other: Self, carryin: Self = Self.zero) -> (carry: Self, low: Self.Magnitude) {
         precondition(Self.Magnitude.bitWidth >= Self.bitWidth) // if this is violated, nothing is gonna work right
         
         var result: Self.Magnitude = .zero, carryout: Self = .zero
         
         switch (Self.Magnitude.bitWidth, Self.bitWidth) {
-        case (UInt8.Magnitude.bitWidth,  UInt8.bitWidth...):  return UInt8.addedFullWidthConverting(self, to: other, carryin: carryin)
-        case (UInt16.Magnitude.bitWidth, UInt16.bitWidth...): return UInt16.addedFullWidthConverting(self, to: other, carryin: carryin)
-        case (UInt32.Magnitude.bitWidth, UInt32.bitWidth...): return UInt32.addedFullWidthConverting(self, to: other, carryin: carryin)
-        case (UInt64.Magnitude.bitWidth, UInt64.bitWidth...): return UInt64.addedFullWidthConverting(self, to: other, carryin: carryin)
+        case (UInt8.Magnitude.bitWidth,  UInt8.bitWidth...):  return UInt8.addedPreservingCarryConverting(self, to: other, carryin: carryin)
+        case (UInt16.Magnitude.bitWidth, UInt16.bitWidth...): return UInt16.addedPreservingCarryConverting(self, to: other, carryin: carryin)
+        case (UInt32.Magnitude.bitWidth, UInt32.bitWidth...): return UInt32.addedPreservingCarryConverting(self, to: other, carryin: carryin)
+        case (UInt64.Magnitude.bitWidth, UInt64.bitWidth...): return UInt64.addedPreservingCarryConverting(self, to: other, carryin: carryin)
         
         // If all else fails and we find a fixed-width type wider than what we can natively support,
         // or with a bit width not a power of 2 at all, or with a magnitude bit width that doesn't
@@ -72,7 +76,7 @@ extension FixedWidthInteger where Self: UnsignedInteger {
             // Keep going as long as either operand still has words left.
             while let _ = leftWord ?? rightWord {
                 // Full-width add the left and right words, substituting zero if either operand is out of words.
-                (carryoutWord, resultWord) = (leftWord ?? .zero).addedFullWidth(to: rightWord ?? .zero, carryin: carryoutWord)
+                (carryoutWord, resultWord) = (leftWord ?? .zero).addedPreservingCarry(to: rightWord ?? .zero, carryin: carryoutWord)
                 // Stuff the new result word into the bottom word of the overall result, then rotate right by one word,
                 // effectively "pushing" the new word in at the top of the result. Since we iterate over exactly the
                 // number of words the result will contain, we will eventually rotate by exactly that many words, which
@@ -87,55 +91,7 @@ extension FixedWidthInteger where Self: UnsignedInteger {
             carryout = Self(carryoutWord)
         }
 
-        return (high: carryout, low: result)
-    }
-
-    /// Performs an operation similar to `addingReportingOverflow(_:)`, in that
-    /// addition is performed, and overflow is checked and reported. However,
-    /// instead of simply returning the overflow flag, this routine attempts to
-    /// behave similarly to the 8086 Intel assembly language instruction ADC,
-    /// "ADd with Carry". This instruction, which still appears in Intel CPUs to
-    /// this day, performs addition, but treats the CPU's Carry Flag as both an
-    /// input and an output, adding its value (always one or zero) to the result
-    /// and including its effect on possible overflow when resetting it to
-    /// reflect the current operation. Likewise, this method will honor the
-    /// value passed in the `carry` parameter. If `true`, the initial output
-    /// value for the sum of the inputs will be set to 1 instead of zero. `self`
-    /// is then added to the input, followed by `rhs`, with overflow being
-    /// detected both times. If _either_ operation overflowed, the `carry` flag
-    /// is set to `true`; otherwise it is reset to `false`. It is expected that
-    /// callers will continually pass in the same variable over and over as part
-    /// of the process of summing a larger-precision value than `Self` is able
-    /// to hold by performing the addition on `Self`-sized chunks at a time. The
-    /// behavior of integers guarantees that the value needing to be carried
-    /// from one subset of bits to the next (the carry) can never be anything
-    /// other than exactly zero ro exactly one - mathematically, in any given
-    /// base B, the maximum possible result of any addition between two single-
-    /// digit numbers of that radix is 2(B - 1); any additional carry value can
-    /// have a maximal result of 2B - 1. (This is in fact the only way for an
-    /// addition in any one radix place to produce the digit B - 1 in that
-    /// place.) In binary, the possible results are:
-    ///     A   B  CF
-    ///   - 0 + 0 + 0 = 00, result is 0 bit, no carry
-    ///   - 0 + 0 + 1 = 01, result is 1 bit, no carry
-    ///   - 0 + 1 + 0 = 01, result is 1 bit, no carry
-    ///   - 0 + 1 + 1 = 10, result is 0 bit with carry
-    ///   - 1 + 0 + 0 = 01, result is 0 bit, no carry
-    ///   - 1 + 0 + 1 = 10, result is 0 bit with carry
-    ///   - 1 + 1 + 0 = 10, result is 0 bit with carry
-    ///   - 1 + 1 + 1 = 11, result is 1 bit with carry
-    ///
-    /// - WARNING: After the final call to this method for a given input set, be
-    ///   sure to check the final state of the carry flag to see if an
-    ///   additional high bit of result needs to be recorded!
-    public func addingWithCarry(_ rhs: Self, carry: inout Bool) -> Self {
-        var output: Self = carry ? 1 : 0
-        var lhsOverflow = false, rhsOverflow = false
-        
-        (output, lhsOverflow) = output.addingReportingOverflow(self)
-        (output, rhsOverflow) = output.addingReportingOverflow(rhs)
-        carry = lhsOverflow || rhsOverflow
-        return output
+        return (carry: carryout, low: result)
     }
     
     /// The same as `addingWithCarry(_:carry:)`, long-winded explanation and
@@ -171,13 +127,13 @@ extension FixedWidthInteger where Self: UnsignedInteger {
 
 extension UInt8 {
     /// Type-specific implementation. Has exactly the same semantics as
-    /// `FixedWidthInteger.addedFullWidth(to:carrying:)` (see above) in all
-    /// respects, except that the type of `Self` is concretely known rather than
-    /// generically known.
-    public func addedFullWidth(to other: Self, carryin: Self = Self.zero) -> (high: Self, low: Self.Magnitude) {
+    /// `FixedWidthInteger.addedPreservingCarry(to:carrying:)` (see above) in
+    /// all respects, except that the type of `Self` is concretely known rather
+    /// than generically known.
+    public func addedPreservingCarry(to other: Self, carryin: Self = Self.zero) -> (carry: Self, low: Self.Magnitude) {
         var carryout = Self.zero
         let result = ClangBuiltins.addcb(x: self, y: other, carryin: carryin, carryout: &carryout)
-        return (high: carryout, low: result)
+        return (carry: carryout, low: result)
     }
     
     /// Utility method. Accepts an arbitrary unsigned `FixedWidthInteger` type
@@ -187,91 +143,91 @@ extension UInt8 {
     /// forcibly convert the inputs to `Self` and the outputs back to `T`
     /// without (much) concern of a range/bounds violation or other mishap. This
     /// method unfortunately can not be added generically to `FixedWidthInteger`
-    /// despite its completely generic nature because `addedFullWidth()` is not
-    /// declared on the original protocol, and it will thus be dispatched to
-    /// the generic implementation rather than the one on the concrete type
+    /// despite its completely generic nature because `addedPreservingCarry()`
+    /// is not declared on the original protocol, and it will thus be dispatched
+    /// to the generic implementation rather than the one on the concrete type
     /// despite `Self` being correct. This would cause an infinite recursion and
     /// crash. Thus we must, annoyingly, duplicate this over and over.
-    fileprivate static func addedFullWidthConverting<T>(_ value: T, to other: T, carryin: T = T.zero) -> (high: T, low: T.Magnitude)
+    fileprivate static func addedPreservingCarryConverting<T>(_ value: T, to other: T, carryin: T = T.zero) -> (carry: T, low: T.Magnitude)
         where T: FixedWidthInteger, T: UnsignedInteger
     {
         assert(T.bitWidth >= Self.bitWidth && T.Magnitude.bitWidth == Self.Magnitude.bitWidth, "Caller did not ensure bit width!")
-        let (selfCarryout, selfResult) = Self.init(value).addedFullWidth(to: Self.init(other), carryin: Self.init(carryin))
-        return (high: T.init(selfCarryout), low: T.Magnitude.init(selfResult))
+        let (selfCarryout, selfResult) = Self.init(value).addedPreservingCarry(to: Self.init(other), carryin: Self.init(carryin))
+        return (carry: T.init(selfCarryout), low: T.Magnitude.init(selfResult))
     }
 }
 
 extension UInt16 {
     /// Type-specific implementation. Has exactly the same semantics as
-    /// `FixedWidthInteger.addedFullWidth(to:carrying:)` (see above) in all
-    /// respects, except that the type of `Self` is concretely known rather than
-    /// generically known.
-    public func addedFullWidth(to other: Self, carryin: Self = Self.zero) -> (high: Self, low: Self.Magnitude) {
+    /// `FixedWidthInteger.addedPreservingCarry(to:carrying:)` (see above) in
+    /// all respects, except that the type of `Self` is concretely known rather
+    /// than generically known.
+    public func addedPreservingCarry(to other: Self, carryin: Self = Self.zero) -> (carry: Self, low: Self.Magnitude) {
         var carryout = Self.zero
         let result = ClangBuiltins.addcs(x: self, y: other, carryin: carryin, carryout: &carryout)
-        return (high: carryout, low: result)
+        return (carry: carryout, low: result)
     }
     
-    /// See `UInt8.addedFullWidthConverting()` for details.
-    fileprivate static func addedFullWidthConverting<T>(_ value: T, to other: T, carryin: T = T.zero) -> (high: T, low: T.Magnitude)
+    /// See `UInt8.addedPreservingCarryConverting()` for details.
+    fileprivate static func addedPreservingCarryConverting<T>(_ value: T, to other: T, carryin: T = T.zero) -> (carry: T, low: T.Magnitude)
         where T: FixedWidthInteger, T: UnsignedInteger
     {
         assert(T.bitWidth >= Self.bitWidth && T.Magnitude.bitWidth == Self.Magnitude.bitWidth, "Caller did not ensure bit width!")
-        let (selfCarryout, selfResult) = Self.init(value).addedFullWidth(to: Self.init(other), carryin: Self.init(carryin))
-        return (high: T.init(selfCarryout), low: T.Magnitude.init(selfResult))
+        let (selfCarryout, selfResult) = Self.init(value).addedPreservingCarry(to: Self.init(other), carryin: Self.init(carryin))
+        return (carry: T.init(selfCarryout), low: T.Magnitude.init(selfResult))
     }
 }
 
 extension UInt32 {
     /// Type-specific implementation. Has exactly the same semantics as
-    /// `FixedWidthInteger.addedFullWidth(to:carrying:)` (see above) in all
-    /// respects, except that the type of `Self` is concretely known rather than
-    /// generically known.
-    public func addedFullWidth(to other: Self, carryin: Self = Self.zero) -> (high: Self, low: Self.Magnitude) {
+    /// `FixedWidthInteger.addedPreservingCarry(to:carrying:)` (see above) in
+    /// all respects, except that the type of `Self` is concretely known rather
+    /// than generically known.
+    public func addedPreservingCarry(to other: Self, carryin: Self = Self.zero) -> (carry: Self, low: Self.Magnitude) {
         var carryout = Self.zero
         let result = ClangBuiltins.addc(x: self, y: other, carryin: carryin, carryout: &carryout)
-        return (high: carryout, low: result)
+        return (carry: carryout, low: result)
     }
     
-    /// See `UInt8.addedFullWidthConverting()` for details.
-    fileprivate static func addedFullWidthConverting<T>(_ value: T, to other: T, carryin: T = T.zero) -> (high: T, low: T.Magnitude)
+    /// See `UInt8.addedPreservingCarryConverting()` for details.
+    fileprivate static func addedPreservingCarryConverting<T>(_ value: T, to other: T, carryin: T = T.zero) -> (carry: T, low: T.Magnitude)
         where T: FixedWidthInteger, T: UnsignedInteger
     {
         assert(T.bitWidth >= Self.bitWidth && T.Magnitude.bitWidth == Self.Magnitude.bitWidth, "Caller did not ensure bit width!")
-        let (selfCarryout, selfResult) = Self.init(value).addedFullWidth(to: Self.init(other), carryin: Self.init(carryin))
-        return (high: T.init(selfCarryout), low: T.Magnitude.init(selfResult))
+        let (selfCarryout, selfResult) = Self.init(value).addedPreservingCarry(to: Self.init(other), carryin: Self.init(carryin))
+        return (carry: T.init(selfCarryout), low: T.Magnitude.init(selfResult))
     }
 }
 
 extension UInt64 {
     /// Type-specific implementation. Has exactly the same semantics as
-    /// `FixedWidthInteger.addedFullWidth(to:carrying:)` (see above) in all
-    /// respects, except that the type of `Self` is concretely known rather than
-    /// generically known.
-    public func addedFullWidth(to other: Self, carryin: Self = Self.zero) -> (high: Self, low: Self.Magnitude) {
+    /// `FixedWidthInteger.addedPreservingCarry(to:carrying:)` (see above) in
+    /// all respects, except that the type of `Self` is concretely known rather
+    /// than generically known.
+    public func addedPreservingCarry(to other: Self, carryin: Self = Self.zero) -> (carry: Self, low: Self.Magnitude) {
         var carryout = Self.zero
         let result = ClangBuiltins.addcll(x: self, y: other, carryin: carryin, carryout: &carryout)
-        return (high: carryout, low: result)
+        return (carry: carryout, low: result)
     }
     
-    /// See `UInt8.addedFullWidthConverting()` for details.
-    fileprivate static func addedFullWidthConverting<T>(_ value: T, to other: T, carryin: T = T.zero) -> (high: T, low: T.Magnitude)
+    /// See `UInt8.addedPreservingCarryConverting()` for details.
+    fileprivate static func addedPreservingCarryConverting<T>(_ value: T, to other: T, carryin: T = T.zero) -> (carry: T, low: T.Magnitude)
         where T: FixedWidthInteger, T: UnsignedInteger
     {
         assert(T.bitWidth >= Self.bitWidth && T.Magnitude.bitWidth == Self.Magnitude.bitWidth, "Caller did not ensure bit width!")
-        let (selfCarryout, selfResult) = Self.init(value).addedFullWidth(to: Self.init(other), carryin: Self.init(carryin))
-        return (high: T.init(selfCarryout), low: T.Magnitude.init(selfResult))
+        let (selfCarryout, selfResult) = Self.init(value).addedPreservingCarry(to: Self.init(other), carryin: Self.init(carryin))
+        return (carry: T.init(selfCarryout), low: T.Magnitude.init(selfResult))
     }
 }
 
 extension UInt {
     /// Type-specific implementation. Has exactly the same semantics as
-    /// `FixedWidthInteger.addedFullWidth(to:carrying:)` (see above) in all
-    /// respects, except that the type of `Self` is concretely known rather than
-    /// generically known.
-    public func addedFullWidth(to other: Self, carryin: Self = Self.zero) -> (high: Self, low: Self.Magnitude) {
+    /// `FixedWidthInteger.addedPreservingCarry(to:carrying:)` (see above) in
+    /// all respects, except that the type of `Self` is concretely known rather
+    /// than generically known.
+    public func addedPreservingCarry(to other: Self, carryin: Self = Self.zero) -> (carry: Self, low: Self.Magnitude) {
         var carryout = Self.zero
         let result = ClangBuiltins.addcl(x: self, y: other, carryin: carryin, carryout: &carryout)
-        return (high: carryout, low: result)
+        return (carry: carryout, low: result)
     }
 }

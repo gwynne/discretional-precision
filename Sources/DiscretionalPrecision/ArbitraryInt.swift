@@ -567,14 +567,13 @@ public struct ArbitraryInt: SignedInteger, CustomDebugStringConvertible, Lossles
         if rhs.sign { return lhs - (-rhs) } // rewrite a + -b as a - b;  5 + -2 -> 5 - 2, 5 + -7 -> 5 - 7 -> -(7 - 5)
 
         // If we get here both operands are positive
-        let n = lhs.words.endIndex, t = rhs.words.endIndex, z1 = Swift.min(n, t), z2 = Swift.max(n, t)
-        var result = Words(repeating: 0, count: z2 + 1), carry = Words.Element.zero
+        let n = lhs.words.endIndex, t = rhs.words.endIndex, z = Swift.max(n, t)
+        var result = Words(repeating: 0, count: z), carry = Words.Element.zero
         
-        lhs.debug(.Sum, state: ["n": n, "t": t, "z1": z1, "z2": z2])
-        for i in 0..<z2 { (carry, result[i]) = lhs[infinite: i].addedFullWidth(to: rhs[infinite: i], carryin: carry) }
-        lhs.debug(.Sum, state: ["result[0..<z2]": result.hexEncodedString(), "carry": carry])
-        if carry != .zero { result[z2] = carry }
-        else { _ = result.removeLast() }
+        lhs.debug(.Sum, state: ["n": n, "t": t, "z": z])
+        for i in 0..<z { (carry, result[i]) = lhs[infinite: i].addedPreservingCarry(to: rhs[infinite: i], carryin: carry) }
+        lhs.debug(.Sum, state: ["result[0..<z]": result.hexEncodedString(), "carry": carry])
+        if carry != .zero { result.append(carry) }
         assert(result.normalize() == result)
         lhs.debug(.Sum, state: ["sum": ArbitraryInt(words: result, sign: false)])
         return ArbitraryInt(words: result, sign: false)
@@ -589,11 +588,12 @@ public struct ArbitraryInt: SignedInteger, CustomDebugStringConvertible, Lossles
         if rhs.sign { lhs -= (-rhs); return } // rewrite a + -b as a - b;  5 + -2 -> 5 - 2, 5 + -7 -> 5 - 7 -> -(7 - 5)
 
         // If we get here both operands are positive
-        let n = lhs.words.endIndex, t = rhs.words.endIndex, z1 = Swift.max(n, t)
+        let n = lhs.words.endIndex, t = rhs.words.endIndex, z = Swift.max(n, t)
         var carry = Words.Element.zero
         
-        lhs.debug(.Sum, state: ["n": n, "t": t, "z1": z1], "inplace!")
-        for i in 0..<z1 { (carry, lhs[i]) = lhs[infinite: i].addedFullWidth(to: rhs[infinite: i], carryin: carry) }
+        lhs.debug(.Sum, state: ["n": n, "t": t, "z": z], "inplace!")
+        lhs.words.append(contentsOf: Array(repeating: Words.Element.zero, count: Swift.max(t - n, 0)))
+        for i in 0..<z { (carry, lhs[i]) = lhs[i].addedPreservingCarry(to: rhs[infinite: i], carryin: carry) }
         if carry != .zero { lhs.words.append(carry) }
         lhs.debug(.Sum, state: ["lhs[0..<n+t]": lhs.words.hexEncodedString(), "carry": carry], "inplace!")
         lhs.bitWidth = lhs.bitWidthAsTotalWordBitsMinusLeadingZeroes()
