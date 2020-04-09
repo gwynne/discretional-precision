@@ -136,16 +136,6 @@ public func ↳%↲(_ lhs: ByteaExponentiation, _ rhs: ArbitraryInt) -> Arbitrar
     }
 }
 
-protocol BoundedRangeExpression: RangeExpression, Sequence {
-    var lowerBound: Bound { get }
-    var upperBound: Bound { get }
-    func clamped(to limits: Self) -> Self
-    init(_ other: Range<Bound>)
-    init(_ other: ClosedRange<Bound>)
-}
-extension Range: BoundedRangeExpression where Bound: Strideable, Bound.Stride: SignedInteger { init(_ other: Range<Bound>) { self = other } }
-extension ClosedRange: BoundedRangeExpression where Bound: Strideable, Bound.Stride: SignedInteger { init(_ other: ClosedRange<Bound>) { self = other } }
-
 /// As a `SignedIntger`, we implement `BinaryInteger`, `SignedNumeric`,
 /// `Numeric`, `AdditiveArithmetic`, `Equatable`, `ExpressibleByIntegerLiteral`,
 /// `CustomStringConvertible`, `Hashable`, and `Strideable`. A lot of this comes
