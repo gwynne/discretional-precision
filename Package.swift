@@ -8,7 +8,8 @@ let package = Package(
     ],
     dependencies: [],
     targets: [
-        .target(name: "DiscretionalPrecision", dependencies: []),
+        .target(name: "CDiscretionalClangBuiltins", dependencies: []),
+        .target(name: "DiscretionalPrecision", dependencies: ["CDiscretionalClangBuiltins"]),
         .testTarget(name: "DiscretionalPrecisionTests", dependencies: ["DiscretionalPrecision"]),
         .testTarget(name: "DiscretionalPrecisionTestVectors", dependencies: ["DiscretionalPrecision"]),
         .testTarget(name: "DiscretionalPrecisionBenchmarks", dependencies: ["DiscretionalPrecision"]),
