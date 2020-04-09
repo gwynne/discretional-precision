@@ -90,3 +90,18 @@ extension Collection where Element == UInt8 {
         }
     }
 }
+
+extension BidirectionalCollection where Element: BinaryInteger {
+    
+    /// Transform a `BidirectionalCollection` of `BinaryIntegers` into a string
+    /// representing the hexadecimal string representations of each of the
+    /// elements of the collection, joined by commas and surrounded by array
+    /// brackets. This is intended as a convenient visual representation of the
+    /// contents of such a collection (such as the `words` array of an
+    /// `ArbitraryInt` value), not as a canonical or lossless form. See
+    /// `BinaryInteger.hexEncodedString()` for additional information.
+    public func hexEncodedString() -> String {
+        return "[\(self.map { $0.hexEncodedString() }.joined(separator: ", "))]"
+    }
+    
+}

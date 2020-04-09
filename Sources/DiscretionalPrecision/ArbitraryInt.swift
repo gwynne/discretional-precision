@@ -1064,6 +1064,4 @@ extension BidirectionalCollection where Element: BinaryInteger {
         return Array(self[self.startIndex...zeroIdx])
     }
     
-    func hexEncodedString() -> String { "[\(self.map { $0.hexEncodedString() }.joined(separator: ", "))]" }
-    
 }
