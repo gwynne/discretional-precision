@@ -45,7 +45,7 @@ BitwiseRotationBuiltin(rotateright32, ror, uint32_t)
 // from Xcode 11.4) does not have this fix yet. Hopefully the next release of Xcode will have it.
 //BitwiseRotationBuiltin(rotateright64, rorll, uint64_t)
 __attribute__((swift_name("ClangBuiltins.rorll(x:y:)")))
-static inline uint64_t _rotateright64(uint64_t x, uint64_t y) { return __builtin_rotateright64(x, (uint64_t)y); }
+static inline uint64_t _rotateright64(uint64_t x, uint64_t y) { return __builtin_rotateright64(x, y); }
 extern uint64_t __attribute__((availability(swift,unavailable))) __builtin_rotateright64(uint64_t, int64_t);
 
 #undef BitwiseRotationBuiltin
