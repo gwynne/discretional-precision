@@ -148,7 +148,7 @@ public func ↳%↲(_ lhs: ByteaExponentiation, _ rhs: ArbitraryInt) -> Arbitrar
 /// Surprisingly, `Comparable` is not in the list. It seems that its presence is
 /// more or less implicit on numeric types, and that the comparison operators
 /// work regardless, whether you implement them type-specificallly or not.
-public struct ArbitraryInt: SignedInteger, CustomDebugStringConvertible, LosslessStringConvertible {
+public struct ArbitraryInt: SignedInteger, LosslessStringConvertible {
 
     /// We reimplement `zero` in terms of a static instance via our internal
     /// memberwise initializer. This turns out ot be MUCH faster than the
@@ -222,11 +222,6 @@ public struct ArbitraryInt: SignedInteger, CustomDebugStringConvertible, Lossles
         // to yield a representation which largely corresponds to the
         // serialization format used by OpenSSL's `bn` library.
         return "\(self.sign ? "-" : "")0x\(self.words.map { $0.bigEndian.hexEncodedString(prefix: false) }.joined())"
-    }
-    
-    /// A more structured, debugging-friendly visual representation.
-    public var debugDescription: String {
-        return "\(self.sign ? "-" : "")\(self.words.hexEncodedString()) [\(self.bitWidth)]"
     }
     
     /// Counts zero-words in the backing store and multiplies them by the bit
@@ -883,41 +878,8 @@ public struct ArbitraryInt: SignedInteger, CustomDebugStringConvertible, Lossles
         return Swift.max(1, totalWordBits - lastLeadingZeroBits)
     }
 
-    /// Debugging facility - this enum needs to be outside the `#if` so there
-    /// doesn't end up needing to be a directive at every point of use.
-    enum DebugOp: String, CaseIterable, Hashable {
-        case Sum, Prod, Quot, ModMul, ModExp, Exp, ModInv, GCD, LShift1, LShift, RShift
-        case Diff
-    }
-    #if DEBUG
-    func debug(_ op: DebugOp, state: @autoclosure () -> [String: Any], _ message: @autoclosure() -> String? = nil) {
-        guard Self._debugOps.contains(op) else { return }
-        let state = state()
-        let message = message()
-        let s1 = !state.isEmpty ? " " : ""
-        let s2 = message != nil ? " " : ""
-        print("\(op.rawValue):\(s1)\(state.map { "\($0) = \(String(debugDescribing: $1))" }.joined(separator: ", "))\(s2)\(message ?? "")")
-    }
-    
-    static var _debugOps: Set<DebugOp> = []
-    static func debugOn(_ op: DebugOp) { _debugOps.insert(op) }
-    static func debugOff(_ op: DebugOp) { _debugOps.remove(op) }
-    #else
-    func debug(_ op: DebugOp, state: @autoclosure () -> [String: Any], _ message: @autoclosure() -> String? = nil) {}
-    static func debugOn(_ op: DebugOp) {}
-    static func debugOff(_ op: DebugOp) {}
-    #endif
 }
 
-extension String {
-    public init(debugDescribing subject: Any) {
-        if let debugConvertible = subject as? CustomDebugStringConvertible {
-            self = debugConvertible.debugDescription
-        } else {
-            self.init(describing: subject)
-        }
-    }
-}
 // MARK: - ArbitraryInt <-> BinaryInteger etc. operators
 
 // Additional operator overload signatures to enable various obvious and/or
