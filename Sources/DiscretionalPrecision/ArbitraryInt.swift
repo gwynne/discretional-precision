@@ -568,14 +568,12 @@ public struct ArbitraryInt: SignedInteger, CustomDebugStringConvertible, Lossles
 
         // If we get here both operands are positive
         let n = lhs.words.endIndex, t = rhs.words.endIndex, z1 = Swift.min(n, t), z2 = Swift.max(n, t)
-        var result = Words(repeating: 0, count: z2 + 1), carry = false
+        var result = Words(repeating: 0, count: z2 + 1), carry = Words.Element.zero
         
         lhs.debug(.Sum, state: ["n": n, "t": t, "z1": z1, "z2": z2])
-        for i in 0..<z1 { result[i] = lhs[i].addingWithCarry(rhs[i], carry: &carry) }
-        lhs.debug(.Sum, state: ["result[0..<z1]": result.hexEncodedString(), "carry": carry])
-        for i in z1..<z2 { result[i] = (n > z1 ? lhs : rhs)[i].addingWithCarry(0, carry: &carry) }
+        for i in 0..<z2 { (carry, result[i]) = lhs[infinite: i].addedFullWidth(to: rhs[infinite: i], carryin: carry) }
         lhs.debug(.Sum, state: ["result[0..<z2]": result.hexEncodedString(), "carry": carry])
-        if carry { result[z2 ] = 1 }
+        if carry != .zero { result[z2] = carry }
         else { _ = result.removeLast() }
         assert(result.normalize() == result)
         lhs.debug(.Sum, state: ["sum": ArbitraryInt(words: result, sign: false)])
@@ -591,15 +589,12 @@ public struct ArbitraryInt: SignedInteger, CustomDebugStringConvertible, Lossles
         if rhs.sign { lhs -= (-rhs); return } // rewrite a + -b as a - b;  5 + -2 -> 5 - 2, 5 + -7 -> 5 - 7 -> -(7 - 5)
 
         // If we get here both operands are positive
-        let n = lhs.words.endIndex, t = rhs.words.endIndex, z1 = Swift.min(n, t)
-        var carry = false
+        let n = lhs.words.endIndex, t = rhs.words.endIndex, z1 = Swift.max(n, t)
+        var carry = Words.Element.zero
         
         lhs.debug(.Sum, state: ["n": n, "t": t, "z1": z1], "inplace!")
-        for i in 0..<z1 { lhs[i] = lhs[i].addingWithCarry(rhs[i], carry: &carry) }
-        lhs.debug(.Sum, state: ["lhs[0..<z1": lhs[0..<z1].hexEncodedString(), "carry": carry], "inplace!")
-        if n > t { for i in t..<n { lhs[i] = lhs[i].addingWithCarry(0, carry: &carry) } }
-        else if t > n { for i in n..<t { lhs.words.append(rhs[i].addingWithCarry(0, carry: &carry)) } }
-        if carry { lhs.words.append(1) }
+        for i in 0..<z1 { (carry, lhs[i]) = lhs[infinite: i].addedFullWidth(to: rhs[infinite: i], carryin: carry) }
+        if carry != .zero { lhs.words.append(carry) }
         lhs.debug(.Sum, state: ["lhs[0..<n+t]": lhs.words.hexEncodedString(), "carry": carry], "inplace!")
         lhs.bitWidth = lhs.bitWidthAsTotalWordBitsMinusLeadingZeroes()
         lhs.debug(.Sum, state: ["sum": lhs], "inplace!")
@@ -972,87 +967,6 @@ extension ArbitraryInt {
     public static func &= <RHS>(lhs: inout ArbitraryInt, rhs: RHS) where RHS: BinaryInteger { lhs &= Self(rhs) }
     public static func |= <RHS>(lhs: inout ArbitraryInt, rhs: RHS) where RHS: BinaryInteger { lhs |= Self(rhs) }
     public static func ^= <RHS>(lhs: inout ArbitraryInt, rhs: RHS) where RHS: BinaryInteger { lhs ^= Self(rhs) }
-}
-
-extension FixedWidthInteger where Self: UnsignedInteger {
-    
-    /// Performs an operation similar to `addingReportingOverflow(_:)`, in that
-    /// addition is performed, and overflow is checked and reported. However,
-    /// instead of simply returning the overflow flag, this routine attempts to
-    /// behave similarly to the 8086 Intel assembly language instruction ADC,
-    /// "ADd with Carry". This instruction, which still appears in Intel CPUs to
-    /// this day, performs addition, but treats the CPU's Carry Flag as both an
-    /// input and an output, adding its value (always one or zero) to the result
-    /// and including its effect on possible overflow when resetting it to
-    /// reflect the current operation. Likewise, this method will honor the
-    /// value passed in the `carry` parameter. If `true`, the initial output
-    /// value for the sum of the inputs will be set to 1 instead of zero. `self`
-    /// is then added to the input, followed by `rhs`, with overflow being
-    /// detected both times. If _either_ operation overflowed, the `carry` flag
-    /// is set to `true`; otherwise it is reset to `false`. It is expected that
-    /// callers will continually pass in the same variable over and over as part
-    /// of the process of summing a larger-precision value than `Self` is able
-    /// to hold by performing the addition on `Self`-sized chunks at a time. The
-    /// behavior of integers guarantees that the value needing to be carried
-    /// from one subset of bits to the next (the carry) can never be anything
-    /// other than exactly zero ro exactly one - mathematically, in any given
-    /// base B, the maximum possible result of any addition between two single-
-    /// digit numbers of that radix is 2(B - 1); any additional carry value can
-    /// have a maximal result of 2B - 1. (This is in fact the only way for an
-    /// addition in any one radix place to produce the digit B - 1 in that
-    /// place.) In binary, the possible results are:
-    ///     A   B  CF
-    ///   - 0 + 0 + 0 = 00, result is 0 bit, no carry
-    ///   - 0 + 0 + 1 = 01, result is 1 bit, no carry
-    ///   - 0 + 1 + 0 = 01, result is 1 bit, no carry
-    ///   - 0 + 1 + 1 = 10, result is 0 bit with carry
-    ///   - 1 + 0 + 0 = 01, result is 0 bit, no carry
-    ///   - 1 + 0 + 1 = 10, result is 0 bit with carry
-    ///   - 1 + 1 + 0 = 10, result is 0 bit with carry
-    ///   - 1 + 1 + 1 = 11, result is 1 bit with carry
-    ///
-    /// - WARNING: After the final call to this method for a given input set, be
-    ///   sure to check the final state of the carry flag to see if an
-    ///   additional high bit of result needs to be recorded!
-    public func addingWithCarry(_ rhs: Self, carry: inout Bool) -> Self {
-        var output: Self = carry ? 1 : 0
-        var lhsOverflow = false, rhsOverflow = false
-        
-        (output, lhsOverflow) = output.addingReportingOverflow(self)
-        (output, rhsOverflow) = output.addingReportingOverflow(rhs)
-        carry = lhsOverflow || rhsOverflow
-        return output
-    }
-    
-    /// The same as `addingWithCarry(_:carry:)`, long-winded explanation and
-    /// all, but instead of adding it's subtracting, instead of a carry it's a
-    /// borrow, and instead of an `ADC` instruction it's a "SuBtract with
-    /// Borrow" (`SBB`) instruction. Of course, actually _applying_ a borrow
-    /// correctly, especially on unsigned numbers, is a bit harder, but oh well.
-    /// As with a carry, the `borrow` flag serves as an additional 1-bit input
-    /// operand; if set, one is subtracted from `self` as the first step. The
-    /// flag will be reset to indicate whether either that or the subtraction of
-    /// `rhs` resulted in overflow (well, underflow). If so, a "schoolbook"
-    /// borrow is assumed; the final result is computed as if an additional
-    /// value equivalent to the radix base of the inputs (calculated by taking
-    /// the partial value resulting from the overflow and subsequent wraparound
-    /// behavior) had been added to the minuend (after any borrow was
-    /// subtracted). The value of the borrow flag on output must be propagated.
-    public func subtractingWithBorrow(_ rhs: Self, borrow: inout Bool) -> Self {
-        // Or we could avoid a hell of a lot of mucking about and just do it an obvious way.
-        
-        // Apply borrow to self, if self isn't already zero (if it is, don't bother).
-        let lhs = self >= 0 && borrow ? self &- 1 : self
-        
-        // Subtract with overflow reporting; the resulting partial value is the correct output.
-        let (output, newBorrow) = lhs.subtractingReportingOverflow(rhs)
-        
-        // Set borrow on output if it was set on input and self is zero, or if overflow occurred.
-        borrow = (borrow && self == 0) || newBorrow
-        
-        // That's it.
-        return output
-    }
 }
 
 extension BidirectionalCollection where Element: BinaryInteger {
