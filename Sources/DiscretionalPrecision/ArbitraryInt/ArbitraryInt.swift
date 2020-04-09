@@ -392,7 +392,7 @@ public struct ArbitraryInt: SignedInteger, LosslessStringConvertible {
             x -= ybnt
             debug(.Quot, state: ["q[n - t]": q[n - t], "x": x], "x >= ybnt")
         }
-        for i in stride(from: n, to: t, by: -1) where t < n {
+        for i in stride(from: n, to: t, by: -1) {
             let j = i - t - 1
             debug(.Quot, state: ["i": i, "j": j])
             
@@ -518,26 +518,22 @@ public struct ArbitraryInt: SignedInteger, LosslessStringConvertible {
         // -2 - -5 -> (-2 + 5), -5 - -2 -> -(-2 - -5) -> -(-2 + 5)
         // Therefore subtraction per below may always assume positive numbers and last-place borrowing.
 
-        var result = ArbitraryInt.zero, borrow = Words.Element.zero, r = Words.Element.zero
+        var n = lhs.words.count, result = Words(repeating: 0, count: n), borrow = Words.Element.zero
         
         // Subtract each group of bits in sequence with propagated borrow.
-        result.words = (0..<Swift.max(lhs.words.count, rhs.words.count)).map {
-            lhs.debug(.Diff, state: ["lWord": lhs[infinite: $0].hexEncodedString(), "rWord": rhs[infinite: $0].hexEncodedString(), "borrow": borrow])
-            (borrow, r) = rhs[infinite: $0].subtractingPreservingCarry(from: lhs[infinite: $0], carryin: borrow)
-            lhs.debug(.Diff, state: ["lWord - rWord": r.hexEncodedString(), "borrow": borrow])
-            return r
+        for i in 0..<n {
+            lhs.debug(.Diff, state: ["lWord": lhs[i].hexEncodedString(), "rWord": rhs[infinite: i].hexEncodedString(), "borrow": borrow])
+            (borrow, result[i]) = rhs[infinite: i].subtractingPreservingCarry(from: lhs[i], carryin: borrow)
+            lhs.debug(.Diff, state: ["lWord - rWord": result[i].hexEncodedString(), "borrow": borrow])
         }
-        // Given rhs < lhs (already checked), taking a borrow out of the lsat word is illegal.
+        // Given rhs < lhs (already checked), taking a borrow out of the last word is illegal.
         assert(borrow == .zero)
-        // Drop all _trailing_ words of the result that are zero. Ensure at least one remains. TODO: More like what + does.
-        result.words = result.words.normalize()
-        // Calculate result bit width as the total words bit count minus leading zero bits of last word. Zero value has one bit.
-        result.bitWidth = result.bitWidthAsTotalWordBitsMinusLeadingZeroes()
-        // Basic sanity assertions on the calculated width
-        assert(result.bitWidth <= lhs.bitWidth)
-        
-        lhs.debug(.Diff, state: ["difference": result])
-        return result
+        // Drop all trailing zero words of the results array, making sure to leave at least one.
+        while result.count > 1 && result.last == .zero { result.removeLast() }
+        // Return result as `ArbitraryInt`
+        let difference = ArbitraryInt(words: result, sign: false)
+        difference.debug(.Diff, state: ["difference": difference])
+        return difference
     }
     
     /// There's really only the one way to do addition no matter how you slice
@@ -678,8 +674,8 @@ public struct ArbitraryInt: SignedInteger, LosslessStringConvertible {
         }
         // Update bit width
         lhs.bitWidth -= Int(rhs)
-        // Normalize any residual leading zeroes
-        lhs.words = lhs.words.normalize()
+        // Drop all trailing zeroes, leaving at least one word in the result.
+        while lhs.words.count > 1 && lhs.words.last == .zero { lhs.words.removeLast() }
         assert(lhs.bitWidth == lhs.bitWidthAsTotalWordBitsMinusLeadingZeroes(), "We did something wrong, counted bits isn't bits minus shifted")
         lhs.debug(.RShift, state: ["value": lhs])
     }
