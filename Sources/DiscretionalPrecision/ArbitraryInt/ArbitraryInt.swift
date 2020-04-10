@@ -150,31 +150,6 @@ public func ↳%↲(_ lhs: ByteaExponentiation, _ rhs: ArbitraryInt) -> Arbitrar
 /// work regardless, whether you implement them type-specificallly or not.
 public struct ArbitraryInt: SignedInteger, LosslessStringConvertible {
 
-    /// We reimplement `zero` in terms of a static instance via our internal
-    /// memberwise initializer. This turns out ot be MUCH faster than the
-    /// default implementation on `AdditiveArithmetic`, which invokes the
-    /// `ExpressibleByIntegerLiteral` conformance.
-    /// See `AdditiveArithmetic.zero`.
-    public static let zero: ArbitraryInt = .init(words: [0], sign: false, bitWidth: 1)
-    
-    /// Our own `.zero` is much faster than converting `0` to an instance of us.
-    /// `1` is another constant we use a LOT, so make sure we have a nice ready-
-    /// made instance of that as well.
-    public static let one: ArbitraryInt = .init(words: [1], sign: false, bitWidth: 1)
-    
-    /// As `.zero` and `.one` are very fast compared to `ArbitraryInt(0)` and
-    /// `ArbitraryInt(1)`, so `.minuxOne` is to `ArbitraryInt(-1)`, and this is
-    /// another constant we use often.
-    public static let minusOne: ArbitraryInt = .init(words: [1], sign: true, bitWidth: 1)
-    
-    /// We implement a signed representation. Unlike the fixed-width integer
-    /// types, this type has no unsigned counterpart; the effective range of an
-    /// instance of this type is unlimited, and the storage requirements of
-    /// positive and negative values are identical, so a separate unsigned type
-    /// would serve very little purpose.
-    /// See `BinaryInteger.isSigned`.
-    @inlinable public static var isSigned: Bool { true }
-    
     /// The raw 64-bit words in LSW->MSW order, representing in combination
     /// all the bits of the arbitrary-precision value. Each individual word is
     /// stored in machine-native endianness (so, little endian). One of these
@@ -204,6 +179,46 @@ public struct ArbitraryInt: SignedInteger, LosslessStringConvertible {
     /// regardless as an optimization and as a consistency cross-check.
     /// See `BinaryInteger.bitWidth`.
     public var bitWidth: Int
+
+    /// An internal utility initializer for very fast construction.
+    /// Does not assert as heavily as the usual initializers!
+    internal init(words: Words, sign: Bool, bitWidth: Int) {
+        self.words = words
+        self.sign = sign
+        self.bitWidth = bitWidth
+        assert(!self.words.isEmpty)
+        assert(self.bitWidth == self.bitWidthAsTotalWordBitsMinusLeadingZeroes())
+        assert(self.sign == false || (self.words.count > 1 || self[0] != 0))
+    }
+    
+}
+
+extension ArbitraryInt {
+
+    /// We reimplement `zero` in terms of a static instance via our internal
+    /// memberwise initializer. This turns out ot be MUCH faster than the
+    /// default implementation on `AdditiveArithmetic`, which invokes the
+    /// `ExpressibleByIntegerLiteral` conformance.
+    /// See `AdditiveArithmetic.zero`.
+    public static let zero: ArbitraryInt = .init(words: [0], sign: false, bitWidth: 1)
+    
+    /// Our own `.zero` is much faster than converting `0` to an instance of us.
+    /// `1` is another constant we use a LOT, so make sure we have a nice ready-
+    /// made instance of that as well.
+    public static let one: ArbitraryInt = .init(words: [1], sign: false, bitWidth: 1)
+    
+    /// As `.zero` and `.one` are very fast compared to `ArbitraryInt(0)` and
+    /// `ArbitraryInt(1)`, so `.minuxOne` is to `ArbitraryInt(-1)`, and this is
+    /// another constant we use often.
+    public static let minusOne: ArbitraryInt = .init(words: [1], sign: true, bitWidth: 1)
+    
+    /// We implement a signed representation. Unlike the fixed-width integer
+    /// types, this type has no unsigned counterpart; the effective range of an
+    /// instance of this type is unlimited, and the storage requirements of
+    /// positive and negative values are identical, so a separate unsigned type
+    /// would serve very little purpose.
+    /// See `BinaryInteger.isSigned`.
+    @inlinable public static var isSigned: Bool { true }
     
     /// Override the default `CustomStringConvertible` conformance; it produces
     /// some very slow results. According to the API contract of integer types,
@@ -319,17 +334,6 @@ public struct ArbitraryInt: SignedInteger, LosslessStringConvertible {
     /// The radix base `b` of our digits; e.g. `1 << radixBitWidth`.
     internal static var radix: ArbitraryInt = .one << Self.radixBitWidth
  
-    /// An internal utility initializer for very fast construction.
-    /// Does not assert as heavily as the usual initializers!
-    internal init(words: Words, sign: Bool, bitWidth: Int) {
-        self.words = words
-        self.sign = sign
-        self.bitWidth = bitWidth
-        assert(!self.words.isEmpty)
-        assert(self.bitWidth == self.bitWidthAsTotalWordBitsMinusLeadingZeroes())
-        assert(self.sign == false || (self.words.count > 1 || self[0] != 0))
-    }
-    
     /// An internal utility initializer not suitable for general use which sets
     /// up a value given an existing array of base-2**64 "digits". Specialized
     /// for when the input array is already of the correct type.
