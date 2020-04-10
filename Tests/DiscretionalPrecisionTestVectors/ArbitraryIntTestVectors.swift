@@ -139,7 +139,7 @@ final class ArbitraryIntTests: XCTestCase {
 //        ArbitraryInt.debugOn(.GCD)
 //        ArbitraryInt.debugOn(.Quot)
 //        ArbitraryInt.debugOn(.Diff)
-        ArbitraryInt.debugOn(.Exp)
+//        ArbitraryInt.debugOn(.Exp)
 //        ArbitraryInt.debugOn(.LShift)
 //        ArbitraryInt.debugOn(.LShift1)
 //        ArbitraryInt.debugOn(.RShift)
