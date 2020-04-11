@@ -220,7 +220,11 @@ final class ArbitraryIntTests: XCTestCase {
     
     func testModMulVectors() throws {
         for (_, vector) in modMulVectors.enumerated() {
-            let modularProduct = ((vector.operands[0] * vector.operands[1]) % vector.operands[2]) + (vector.operands[0].sign != vector.operands[1].sign ? vector.operands[2].magnitude : 0)
+            var modularProduct = (vector.operands[0] * vector.operands[1]) % vector.operands[2]
+            
+            // TEMPORARY
+            #warning("Replace me with a real `modularProduct(with:modulo:)` method.")
+            modularProduct += (vector.operands[0].sign != vector.operands[1].sign ? vector.operands[2].magnitude : 0)
             
 //            print("Vector \(i)/\(modMulVectors.count):")
 //            print("  A   = \(vector.operands[0].debugDescription)")
@@ -236,15 +240,15 @@ final class ArbitraryIntTests: XCTestCase {
     }
     
     func testModExpVectors() throws {
-        for (i, vector) in modExpVectors.enumerated() {
             let modularExponential = (vector.operands[0] ✱✱ vector.operands[1] ↳%↲ vector.operands[2])
+        for (_, vector) in modExpVectors.enumerated() {
             
-            print("Vector \(i)/\(modExpVectors.count):")
-            print("  A   = \(vector.operands[0].debugDescription)")
-            print("  E   = \(vector.operands[1].debugDescription)")
-            print("  M   = \(vector.operands[2].debugDescription)")
-            print("  Mxp = \(vector.result.debugDescription)")
-            print("  Out = \(modularExponential.debugDescription)")
+//            print("Vector \(i)/\(modExpVectors.count):")
+//            print("  A   = \(vector.operands[0].debugDescription)")
+//            print("  E   = \(vector.operands[1].debugDescription)")
+//            print("  M   = \(vector.operands[2].debugDescription)")
+//            print("  Mxp = \(vector.result.debugDescription)")
+//            print("  Out = \(modularExponential.debugDescription)")
             XCTAssertEqual(modularExponential, vector.result, file: vector.file, line: vector.line)
             XCTAssertEqual(modularExponential.words.hexEncodedString(), vector.result.words.hexEncodedString(), file: vector.file, line: vector.line)
             XCTAssertEqual(modularExponential.bitWidth, vector.result.bitWidth, file: vector.file, line: vector.line)
@@ -269,14 +273,14 @@ final class ArbitraryIntTests: XCTestCase {
     }
 
     func testModInvVectors() throws {
-        for (i, vector) in modInvVectors.enumerated() {
+        for (_, vector) in modInvVectors.enumerated() {
             let modularInverse = vector.operands[0].inverse(modulo: vector.operands[1]) ?? .zero
             
-            print("Vector \(i)/\(modInvVectors.count):")
-            print("  A   = \(vector.operands[0].debugDescription)")
-            print("  M   = \(vector.operands[1].debugDescription)")
-            print("  Inv = \(vector.result.debugDescription)")
-            print("  Out = \(modularInverse.debugDescription)")
+//            print("Vector \(i)/\(modInvVectors.count):")
+//            print("  A   = \(vector.operands[0].debugDescription)")
+//            print("  M   = \(vector.operands[1].debugDescription)")
+//            print("  Inv = \(vector.result.debugDescription)")
+//            print("  Out = \(modularInverse.debugDescription)")
             XCTAssertEqual(modularInverse, vector.result, file: vector.file, line: vector.line)
             XCTAssertEqual(modularInverse.words.hexEncodedString(), vector.result.words.hexEncodedString(), file: vector.file, line: vector.line)
             XCTAssertEqual(modularInverse.bitWidth, vector.result.bitWidth, file: vector.file, line: vector.line)
@@ -285,17 +289,17 @@ final class ArbitraryIntTests: XCTestCase {
     }
 
     func testGCDVectors() throws {
-        for (i, vector) in gcdVectors.enumerated() {
+        for (_, vector) in gcdVectors.enumerated() {
             let gcd = vector.operands[0].gcd_bin(vector.operands[1]).v
             let lcm = vector.operands[0].lcm(vector.operands[1])
             
-            print("Vector \(i)/\(gcdVectors.count):")
-            print("  A   = \(vector.operands[0].debugDescription)")
-            print("  B   = \(vector.operands[1].debugDescription)")
-            print("  GCD = \(vector.result.debugDescription)")
-            print("  LCM = \(vector.operands[2].debugDescription)")
-            print("  OGD = \(gcd.debugDescription)")
-            print("  OLM = \(lcm.debugDescription)")
+//            print("Vector \(i)/\(gcdVectors.count):")
+//            print("  A   = \(vector.operands[0].debugDescription)")
+//            print("  B   = \(vector.operands[1].debugDescription)")
+//            print("  GCD = \(vector.result.debugDescription)")
+//            print("  LCM = \(vector.operands[2].debugDescription)")
+//            print("  OGD = \(gcd.debugDescription)")
+//            print("  OLM = \(lcm.debugDescription)")
             XCTAssertEqual(gcd, vector.result, file: vector.file, line: vector.line)
             XCTAssertEqual(gcd.words.hexEncodedString(), vector.result.words.hexEncodedString(), file: vector.file, line: vector.line)
             XCTAssertEqual(gcd.bitWidth, vector.result.bitWidth, file: vector.file, line: vector.line)
