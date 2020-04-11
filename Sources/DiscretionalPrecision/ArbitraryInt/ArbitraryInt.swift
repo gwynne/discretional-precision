@@ -57,23 +57,6 @@ public struct ArbitraryInt: SignedInteger, LosslessStringConvertible {
 
 extension ArbitraryInt {
 
-    /// We reimplement `zero` in terms of a static instance via our internal
-    /// memberwise initializer. This turns out ot be MUCH faster than the
-    /// default implementation on `AdditiveArithmetic`, which invokes the
-    /// `ExpressibleByIntegerLiteral` conformance.
-    /// See `AdditiveArithmetic.zero`.
-    public static let zero: ArbitraryInt = .init(words: [0], sign: false, bitWidth: 1)
-    
-    /// Our own `.zero` is much faster than converting `0` to an instance of us.
-    /// `1` is another constant we use a LOT, so make sure we have a nice ready-
-    /// made instance of that as well.
-    public static let one: ArbitraryInt = .init(words: [1], sign: false, bitWidth: 1)
-    
-    /// As `.zero` and `.one` are very fast compared to `ArbitraryInt(0)` and
-    /// `ArbitraryInt(1)`, so `.minuxOne` is to `ArbitraryInt(-1)`, and this is
-    /// another constant we use often.
-    public static let minusOne: ArbitraryInt = .init(words: [1], sign: true, bitWidth: 1)
-    
     /// We implement a signed representation. Unlike the fixed-width integer
     /// types, this type has no unsigned counterpart; the effective range of an
     /// instance of this type is unlimited, and the storage requirements of
