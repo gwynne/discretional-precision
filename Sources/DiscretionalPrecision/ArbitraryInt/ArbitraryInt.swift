@@ -1,5 +1,3 @@
-import Darwin
-
 /// As a `SignedIntger`, we implement `BinaryInteger`, `SignedNumeric`,
 /// `Numeric`, `AdditiveArithmetic`, `Equatable`, `ExpressibleByIntegerLiteral`,
 /// `CustomStringConvertible`, `Hashable`, and `Strideable`. A lot of this comes
@@ -193,7 +191,7 @@ extension ArbitraryInt {
     
     /// The logarithm base 2 of the `radixBitWidth`, useful for optimizing use
     /// of the value via bit shifting.
-    internal static var radixBitShift: Int = Int(exactly: log2(Double(exactly: Self.radixBitWidth)!))!
+    internal static var radixBitShift: Int = Self.radixBitWidth.trailingZeroBitCount
     
     /// The radix base `b` of our digits; e.g. `1 << radixBitWidth`.
     internal static var radix: ArbitraryInt = .one << Self.radixBitWidth
