@@ -240,8 +240,8 @@ final class ArbitraryIntTests: XCTestCase {
     }
     
     func testModExpVectors() throws {
-            let modularExponential = (vector.operands[0] ✱✱ vector.operands[1] ↳%↲ vector.operands[2])
         for (_, vector) in modExpVectors.enumerated() {
+            let modularExponential = vector.operands[0].raised(to: vector.operands[1], modulo: vector.operands[2])
             
 //            print("Vector \(i)/\(modExpVectors.count):")
 //            print("  A   = \(vector.operands[0].debugDescription)")
@@ -258,7 +258,7 @@ final class ArbitraryIntTests: XCTestCase {
 
     func testExpVectors() throws {
         for (_, vector) in expVectors.enumerated() {
-            let exponential: ArbitraryInt = vector.operands[0] ✱✱ vector.operands[1]
+            let exponential: ArbitraryInt = vector.operands[0] ↑ vector.operands[1]
             
 //            print("Vector \(i)/\(expVectors.count):")
 //            print("  A   = \(vector.operands[0].debugDescription)")
