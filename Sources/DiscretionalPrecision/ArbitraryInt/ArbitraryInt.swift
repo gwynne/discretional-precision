@@ -78,10 +78,10 @@ extension ArbitraryInt {
         if self == .zero { return "0" }
         if self.bitWidth < Self.radixBitWidth { return "\(sign ? "-" : "")\(words[0].hexEncodedString())" }
         
-        // We flip the endianness and display the word array in LSW-first order
+        // We flip the endianness and display the word array in MSW-first order
         // to yield a representation which largely corresponds to the
         // serialization format used by OpenSSL's `bn` library.
-        return "\(self.sign ? "-" : "")0x\(self.words.map { $0.bigEndian.hexEncodedString(prefix: false) }.joined())"
+        return "\(self.sign ? "-" : "")\(self.words.reversed().map { $0.hexEncodedString(prefix: false) }.joined())"
     }
     
     /// Counts zero-words in the backing store and multiplies them by the bit
