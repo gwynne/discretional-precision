@@ -697,14 +697,3 @@ extension ArbitraryInt {
     public static func |= <RHS>(lhs: inout ArbitraryInt, rhs: RHS) where RHS: BinaryInteger { lhs |= Self(rhs) }
     public static func ^= <RHS>(lhs: inout ArbitraryInt, rhs: RHS) where RHS: BinaryInteger { lhs ^= Self(rhs) }
 }
-
-extension BidirectionalCollection where Element: BinaryInteger {
-    
-    public func normalized() -> Array<Element> {
-        var zeroIdx = self.index(before: self.endIndex)
-        while zeroIdx > self.startIndex && self[zeroIdx] == 0 { zeroIdx = self.index(before: zeroIdx) }
-        if zeroIdx == self.startIndex && self[self.startIndex] == 0 { return [0] }
-        return Array(self[self.startIndex...zeroIdx])
-    }
-    
-}
