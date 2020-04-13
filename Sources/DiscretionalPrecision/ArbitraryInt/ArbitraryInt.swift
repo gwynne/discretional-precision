@@ -10,7 +10,7 @@
 /// Surprisingly, `Comparable` is not in the list. It seems that its presence is
 /// more or less implicit on numeric types, and that the comparison operators
 /// work regardless, whether you implement them type-specificallly or not.
-public struct ArbitraryInt: SignedInteger {
+public struct ArbitraryInt {
     
     /// Typealias for our internal storage, which does _not_ conform to the
     /// expectations of `BinaryInteger.Words`, and is easier to type multiple
@@ -65,16 +65,8 @@ public struct ArbitraryInt: SignedInteger {
     
 }
 
-extension ArbitraryInt {
+extension ArbitraryInt: SignedInteger {
 
-    /// We implement a signed representation. Unlike the fixed-width integer
-    /// types, this type has no unsigned counterpart; the effective range of an
-    /// instance of this type is unlimited, and the storage requirements of
-    /// positive and negative values are identical, so a separate unsigned type
-    /// would serve very little purpose.
-    /// See `BinaryInteger.isSigned`.
-    @inlinable public static var isSigned: Bool { true }
-    
     /// Counts zero-words in the backing store and multiplies them by the bit
     /// width for efficiency, adding the trailing count from the first non-zero
     /// word (which must exist by our definition of this type unless the total
@@ -89,7 +81,8 @@ extension ArbitraryInt {
     }
     
     /// Override the default `negate()`, otherwise it defaults to `0 - self`,
-    /// which would recurse since we implement that in terms of negation.
+    /// which would recurse since we implement that in terms of negation. Make
+    /// sure not to produce the illegal "negative zero" representation.
     @inlinable public mutating func negate() {
         self.sign = self.storage == [0] ? false : !self.sign
     }
