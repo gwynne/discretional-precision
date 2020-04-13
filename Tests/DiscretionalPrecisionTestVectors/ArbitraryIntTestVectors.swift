@@ -2,136 +2,7 @@ import XCTest
 @testable import DiscretionalPrecision
 
 final class ArbitraryIntTests: XCTestCase {
-    
-//    func testTrivial() throws {
-//        let ctx = CNIOBoringSSL_BN_CTX_new()
-//        var bnm = CNIOBoringSSL_BN_new()
-//        CNIOBoringSSL_BN_hex2bn(&bnm, "414141414141414141414127414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001")
-//
-//        var bnb = CNIOBoringSSL_BN_new() // b
-//        CNIOBoringSSL_BN_lshift(bnb, CNIOBoringSSL_BN_value_one(), 64)
-//        var bnnm = CNIOBoringSSL_BN_new() // -m
-//        CNIOBoringSSL_BN_copy(bnnm, bnm)
-//        CNIOBoringSSL_BN_set_negative(bnnm, 1)
-//        var bnmb = CNIOBoringSSL_BN_new() // m mod b
-//        CNIOBoringSSL_BN_div(nil, bnmb, bnm, bnb, ctx)
-//        var bnnmb = CNIOBoringSSL_BN_new() // -m mod b
-//        CNIOBoringSSL_BN_div(nil, bnnmb, bnnm, bnb, ctx)
-//        var bnmP = CNIOBoringSSL_BN_new() // m'
-//        CNIOBoringSSL_BN_mod_inverse(bnmP, bnm, bnb, ctx)
-//        var bnnmP = CNIOBoringSSL_BN_new() // -m'
-//        CNIOBoringSSL_BN_mod_inverse(bnnmP, bnnm, bnb, ctx)
-//        var bnR = CNIOBoringSSL_BN_new() // R
-//        CNIOBoringSSL_BN_lshift(bnR, CNIOBoringSSL_BN_value_one(), 1536)
-//        var bnRm = CNIOBoringSSL_BN_new() // R mod m
-//        CNIOBoringSSL_BN_div(nil, bnRm, bnR, bnm, ctx)
-//        var bnR2m = CNIOBoringSSL_BN_new() // R**2 mod m
-//        CNIOBoringSSL_BN_mod_sqr(bnR2m, bnR, bnm, ctx)
-//        var bnRinv = CNIOBoringSSL_BN_new() // R**-1 mod m
-//        CNIOBoringSSL_BN_mod_inverse(bnRinv, bnR, bnm, ctx)
-//
-//        var bnx = CNIOBoringSSL_BN_new() // x
-//        CNIOBoringSSL_BN_hex2bn(&bnx, "050505050505")
-//
-//        var bny0 = CNIOBoringSSL_BN_new() // y[0]
-//        CNIOBoringSSL_BN_hex2bn(&bny0, "4545cd7abd6da5c4")
-//        var bnxy0 = CNIOBoringSSL_BN_new() // xy0
-//        CNIOBoringSSL_BN_mod_mul(bnxy0, bnx, bny0, bnb, ctx)
-//        var bnu = CNIOBoringSSL_BN_new() // u
-//        CNIOBoringSSL_BN_mul(bnu, bnxy0, bnnmP, ctx)
-//        var bnub = CNIOBoringSSL_BN_new() // u mod b
-//        CNIOBoringSSL_BN_div(nil, bnub, bnu, bnb, ctx)
-//
-//        var bnxTinv = CNIOBoringSSL_BN_new() // x~**-1
-//        CNIOBoringSSL_BN_mod_mul(bnxTinv, bnx, bnR2m, bnm, ctx)
-//        var bnxT = CNIOBoringSSL_BN_new() // x~
-//        CNIOBoringSSL_BN_mod_mul(bnxT, bnxTinv, bnRinv, bnm, ctx)
-//        var bnxR2m = CNIOBoringSSL_BN_new() // x*(R**2 mod m)
-//        CNIOBoringSSL_BN_mul(bnxR2m, bnx, bnR2m, ctx)
-//        var bnxR2mm = CNIOBoringSSL_BN_new() // (x*(R**2 mod m)) mod m
-//        CNIOBoringSSL_BN_mod_mul(bnxR2mm, bnx, bnR2m, bnm, ctx)
-//
-//        var mctx = CNIOBoringSSL_BN_MONT_CTX_new()
-//        CNIOBoringSSL_BN_MONT_CTX_set(mctx, bnm, ctx)
-//        var bnxT_mont = CNIOBoringSSL_BN_new()
-//        CNIOBoringSSL_BN_mod_mul_montgomery(bnxT_mont, bnx, bnR2m, mctx, ctx)
-//
-//        print("b", String(cString: CNIOBoringSSL_BN_bn2hex(bnb)))
-//        print("m", String(cString: CNIOBoringSSL_BN_bn2hex(bnm)))
-//        print("-m", String(cString: CNIOBoringSSL_BN_bn2hex(bnnm)))
-//        print("m % b", String(cString: CNIOBoringSSL_BN_bn2hex(bnmb)))
-//        print("-m % b", String(cString: CNIOBoringSSL_BN_bn2hex(bnnmb)))
-//        print("m'", String(cString: CNIOBoringSSL_BN_bn2hex(bnmP)))
-//        print("-m'", String(cString: CNIOBoringSSL_BN_bn2hex(bnnmP)))
-//        print("R", String(cString: CNIOBoringSSL_BN_bn2hex(bnR)))
-//        print("R % m", String(cString: CNIOBoringSSL_BN_bn2hex(bnRm)))
-//        print("R^2 % m", String(cString: CNIOBoringSSL_BN_bn2hex(bnR2m)))
-//        print("R^-1", String(cString: CNIOBoringSSL_BN_bn2hex(bnRinv)))
-//        print("x", String(cString: CNIOBoringSSL_BN_bn2hex(bnx)))
-//        print("y[0]", String(cString: CNIOBoringSSL_BN_bn2hex(bny0)))
-//        print("x*y[0]", String(cString: CNIOBoringSSL_BN_bn2hex(bnxy0)))
-//        print("u", String(cString: CNIOBoringSSL_BN_bn2hex(bnu)))
-//        print("u mod b", String(cString: CNIOBoringSSL_BN_bn2hex(bnub)))
-//        print("x~^-1", String(cString: CNIOBoringSSL_BN_bn2hex(bnxTinv)))
-//        print("x~", String(cString: CNIOBoringSSL_BN_bn2hex(bnxT)))
-//        print("Mont(x~)", String(cString: CNIOBoringSSL_BN_bn2hex(bnxT_mont)))
-//        print("x*(R^2%m)", String(cString: CNIOBoringSSL_BN_bn2hex(bnxR2m)))
-//        print("x*(R^2%m)%m", String(cString: CNIOBoringSSL_BN_bn2hex(bnxR2mm)))
-
-// R**-1 mod m = 10a233c556e87a0b9d2ec044a233c556e87a0b9d2ec0548775069829bb4cde70019324b647d96afc8e1fb142d465f7891aac3dcf60f28415a738ca5bed7f10a233c556e87a0b9d2ec051e3950371e04ebd2b9a0876e5470371e04ebd2b9a0876e553c2309f0d7bea58c735a41280ef5dcc3aa91785f462d13fae1c8af967d644b3218ffe6cdb49b826950371e04ebd2b9a0876e553c2400000000000000000000000000000000000000000000000000000000000000000000000
-//        CNIOBoringSSL_BN_sqr(bnA, bnB, ctx)
-//        CNIOBoringSSL_BN_hex2bn(&bnA, "10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
-// 3c3c3c3c3c3c3c3ca23c3c243c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3b4614d9fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc13b13c
-// R**2 mod m == 2e4a2ef81aefdad0aacf11d5f6634c86b0292cad20d1000e0f30c7e1600396bccedb59f907bba0b5408f2d3009818f41b3d6c4622250bf24dc314f9854f1b889960140586d1c25479e5a13cf4a786d13ab2ef4c230b6c82a9b51ce4b27adf270127be554c5d07b25208fbb7e771dc0b92f143226a06a9310259214025ba629208fab9cfa549afa782ac26ba9e28af5c32beea4fc326fc5c145b9f663d3ef5088551718315be5810c98dd4818bed720ec68ac3d794a4545cd7abd6da5c4
-// (R**2 mod m) * x mod m == 0362026da0734e0fb6714d0ccede4f74e877f05cef3284642fd591b496784378728bcd4e3cf83e4a47d14def30d73a19649d239aa688eedbdc29e3434fe8ea714e1a7a5058993a68532a213694e8592b5aebd616e4f8debc4d0097ece094d6f7d9e5335b824eb4a07b9c6bad9a416dcc433722e3fd3f36210f20e953a1e88d66cae0dfa48d004ad331282bed45114776d5d6f417cca064ab91c7cfa9297ec901d3af7afe59f6f72c20c914b799123d0bc819bff246f7da4dbe5abf84e9
-//        CNIOBoringSSL_BN_div(nil, bnM, bnA, bnB, ctx)
-//        CNIOBoringSSL_BN_mod_mul(bnM, bnA, CNIOBoringSSL_BN_value_one(), bnB, ctx)
-//        print(String(cString: CNIOBoringSSL_BN_bn2hex(bnM)))
-//        print(String(cString: CNIOBoringSSL_BN_bn2dec(bnM)))
-//        CNIOBoringSSL_BN_mod_mul(bnA, bnM, bnN, bnB, ctx)
-//        print(String(cString: CNIOBoringSSL_BN_bn2hex(bnA)))
-//        print(String(cString: CNIOBoringSSL_BN_bn2dec(bnA)))
-/*        //let ctx = CNIOBoringSSL_BN_CTX_new()
-        var bnA = CNIOBoringSSL_BN_new()
-        var bnB = CNIOBoringSSL_BN_new()
-        let bnQ = CNIOBoringSSL_BN_new()
-        //let bnR = CNIOBoringSSL_BN_new()
-        CNIOBoringSSL_BN_hex2bn(&bnA, "080000000000000000000000000000000000000000000000")
-        CNIOBoringSSL_BN_hex2bn(&bnB, "07ffffffffffffffd0000000000000000000000000000000")
-        CNIOBoringSSL_BN_sub(bnQ, bnA, bnB)
-        //CNIOBoringSSL_BN_div(bnQ, bnR, bnA, bnB, ctx)
-        let sQ = String(cString: CNIOBoringSSL_BN_bn2hex(bnQ))
-        //let sR = String(cString: CNIOBoringSSL_BN_bn2hex(bnR))
-        let sQd = String(cString: CNIOBoringSSL_BN_bn2dec(bnQ))
-        //let sRd = String(cString: CNIOBoringSSL_BN_bn2dec(bnR))
-        print(sQ, sQd)//, sR, sRd)
-
-        var bnA2 = CNIOBoringSSL_BN_new()
-        var bnB2 = CNIOBoringSSL_BN_new()
-        let bnP = CNIOBoringSSL_BN_new()
-        CNIOBoringSSL_BN_hex2bn(&bnA2, "1999999999999999")
-        CNIOBoringSSL_BN_hex2bn(&bnB2, "50000000000000000000000000000000")
-        CNIOBoringSSL_BN_mul(bnP, bnA2, bnB2, ctx)
-        var sP = String(cString: CNIOBoringSSL_BN_bn2hex(bnP))
-        var sPd = String(cString: CNIOBoringSSL_BN_bn2dec(bnP))
-        print(sP, sPd)
-
-        CNIOBoringSSL_BN_hex2bn(&bnA2, "9999999999999999")
-        CNIOBoringSSL_BN_hex2bn(&bnB2, "50000000000000000000000000000000")
-        C\NIOBoringSSL_BN_mul(bnP, bnA2, bnB2, ctx)
-        sP = String(cString: CNIOBoringSSL_BN_bn2hex(bnP))
-        sPd = String(cString: CNIOBoringSSL_BN_bn2dec(bnP))
-        print(sP, sPd)
-
-        CNIOBoringSSL_BN_hex2bn(&bnA2, "9999999999999999")
-        CNIOBoringSSL_BN_hex2bn(&bnB2, "5000000000000000")
-        CNIOBoringSSL_BN_mul(bnP, bnA2, bnB2, ctx)
-        sP = String(cString: CNIOBoringSSL_BN_bn2hex(bnP))
-        sPd = String(cString: CNIOBoringSSL_BN_bn2dec(bnP))
-        print(sP, sPd)
-*/
-//    }
-    
+        
     override func setUpWithError() throws {
 //        ArbitraryInt.debugOn(.ModExp)
 //        ArbitraryInt.debugOn(.ModMul)
@@ -159,9 +30,6 @@ final class ArbitraryIntTests: XCTestCase {
 //            print("  Sum = \(vector.result.debugDescription)")
 //            print("  Out = \(sum.debugDescription)")
             XCTAssertEqual(sum, vector.result, file: vector.file, line: vector.line)
-            XCTAssertEqual(sum.storage.hexEncodedString(), vector.result.storage.hexEncodedString(), file: vector.file, line: vector.line)
-            XCTAssertEqual(sum.bitWidth, vector.result.bitWidth, file: vector.file, line: vector.line)
-            XCTAssertEqual(sum.sign, vector.result.sign, file: vector.file, line: vector.line)
         }
         for (_, vector) in addVectors.enumerated() {
             // Explicitly test the += variant.
@@ -174,9 +42,6 @@ final class ArbitraryIntTests: XCTestCase {
 //            print("  Sum = \(vector.result.debugDescription)")
 //            print("  Out = \(sum.debugDescription)")
             XCTAssertEqual(sum, vector.result, file: vector.file, line: vector.line)
-            XCTAssertEqual(sum.storage.hexEncodedString(), vector.result.storage.hexEncodedString(), file: vector.file, line: vector.line)
-            XCTAssertEqual(sum.bitWidth, vector.result.bitWidth, file: vector.file, line: vector.line)
-            XCTAssertEqual(sum.sign, vector.result.sign, file: vector.file, line: vector.line)
         }
     }
     
@@ -190,9 +55,6 @@ final class ArbitraryIntTests: XCTestCase {
 //            print("  Prd = \(vector.result.debugDescription)")
 //            print("  Out = \(product.debugDescription)")
             XCTAssertEqual(product, vector.result, file: vector.file, line: vector.line)
-            XCTAssertEqual(product.storage.hexEncodedString(), vector.result.storage.hexEncodedString(), file: vector.file, line: vector.line)
-            XCTAssertEqual(product.bitWidth, vector.result.bitWidth, file: vector.file, line: vector.line)
-            XCTAssertEqual(product.sign, vector.result.sign, file: vector.file, line: vector.line)
         }
     }
     
@@ -208,13 +70,7 @@ final class ArbitraryIntTests: XCTestCase {
 //            print("  Out = \(quotient.debugDescription)")
 //            print("  ORm = \(remainder.debugDescription)")
             XCTAssertEqual(quotient, vector.result, file: vector.file, line: vector.line)
-            XCTAssertEqual(quotient.storage.hexEncodedString(), vector.result.storage.hexEncodedString(), file: vector.file, line: vector.line)
-            XCTAssertEqual(quotient.bitWidth, vector.result.bitWidth, file: vector.file, line: vector.line)
-            XCTAssertEqual(quotient.sign, vector.result.sign, file: vector.file, line: vector.line)
             XCTAssertEqual(remainder, vector.operands[2], file: vector.file, line: vector.line)
-            XCTAssertEqual(remainder.storage.hexEncodedString(), vector.operands[2].storage.hexEncodedString(), file: vector.file, line: vector.line)
-            XCTAssertEqual(remainder.bitWidth, vector.operands[2].bitWidth, file: vector.file, line: vector.line)
-            XCTAssertEqual(remainder.sign, vector.operands[2].sign, file: vector.file, line: vector.line)
         }
     }
     
@@ -224,7 +80,7 @@ final class ArbitraryIntTests: XCTestCase {
             
             // TEMPORARY
             #warning("Replace me with a real `modularProduct(with:modulo:)` method.")
-            modularProduct += (vector.operands[0].sign != vector.operands[1].sign ? vector.operands[2].magnitude : 0)
+            modularProduct += (vector.operands[0].signum() != vector.operands[1].signum() && vector.operands[0].signum() != 0 ? vector.operands[2].magnitude : 0)
             
 //            print("Vector \(i)/\(modMulVectors.count):")
 //            print("  A   = \(vector.operands[0].debugDescription)")
@@ -233,9 +89,6 @@ final class ArbitraryIntTests: XCTestCase {
 //            print("  Mdp = \(vector.result.debugDescription)")
 //            print("  Out = \(modularProduct.debugDescription)")
             XCTAssertEqual(modularProduct, vector.result, file: vector.file, line: vector.line)
-            XCTAssertEqual(modularProduct.storage.hexEncodedString(), vector.result.storage.hexEncodedString(), file: vector.file, line: vector.line)
-            XCTAssertEqual(modularProduct.bitWidth, vector.result.bitWidth, file: vector.file, line: vector.line)
-            XCTAssertEqual(modularProduct.sign, vector.result.sign, file: vector.file, line: vector.line)
         }
     }
     
@@ -250,9 +103,6 @@ final class ArbitraryIntTests: XCTestCase {
 //            print("  Mxp = \(vector.result.debugDescription)")
 //            print("  Out = \(modularExponential.debugDescription)")
             XCTAssertEqual(modularExponential, vector.result, file: vector.file, line: vector.line)
-            XCTAssertEqual(modularExponential.storage.hexEncodedString(), vector.result.storage.hexEncodedString(), file: vector.file, line: vector.line)
-            XCTAssertEqual(modularExponential.bitWidth, vector.result.bitWidth, file: vector.file, line: vector.line)
-            XCTAssertEqual(modularExponential.sign, vector.result.sign, file: vector.file, line: vector.line)
         }
     }
 
@@ -266,9 +116,6 @@ final class ArbitraryIntTests: XCTestCase {
 //            print("  Exp = \(vector.result.debugDescription)")
 //            print("  Out = \(exponential.debugDescription)")
             XCTAssertEqual(exponential, vector.result, file: vector.file, line: vector.line)
-            XCTAssertEqual(exponential.storage.hexEncodedString(), vector.result.storage.hexEncodedString(), file: vector.file, line: vector.line)
-            XCTAssertEqual(exponential.bitWidth, vector.result.bitWidth, file: vector.file, line: vector.line)
-            XCTAssertEqual(exponential.sign, vector.result.sign, file: vector.file, line: vector.line)
         }
     }
 
@@ -282,9 +129,6 @@ final class ArbitraryIntTests: XCTestCase {
 //            print("  Inv = \(vector.result.debugDescription)")
 //            print("  Out = \(modularInverse.debugDescription)")
             XCTAssertEqual(modularInverse, vector.result, file: vector.file, line: vector.line)
-            XCTAssertEqual(modularInverse.storage.hexEncodedString(), vector.result.storage.hexEncodedString(), file: vector.file, line: vector.line)
-            XCTAssertEqual(modularInverse.bitWidth, vector.result.bitWidth, file: vector.file, line: vector.line)
-            XCTAssertEqual(modularInverse.sign, vector.result.sign, file: vector.file, line: vector.line)
         }
     }
 
@@ -301,13 +145,7 @@ final class ArbitraryIntTests: XCTestCase {
 //            print("  OGD = \(gcd.debugDescription)")
 //            print("  OLM = \(lcm.debugDescription)")
             XCTAssertEqual(gcd, vector.result, file: vector.file, line: vector.line)
-            XCTAssertEqual(gcd.storage.hexEncodedString(), vector.result.storage.hexEncodedString(), file: vector.file, line: vector.line)
-            XCTAssertEqual(gcd.bitWidth, vector.result.bitWidth, file: vector.file, line: vector.line)
-            XCTAssertEqual(gcd.sign, vector.result.sign, file: vector.file, line: vector.line)
             XCTAssertEqual(lcm, vector.operands[2], file: vector.file, line: vector.line)
-            XCTAssertEqual(lcm.storage.hexEncodedString(), vector.operands[2].storage.hexEncodedString(), file: vector.file, line: vector.line)
-            XCTAssertEqual(lcm.bitWidth, vector.operands[2].bitWidth, file: vector.file, line: vector.line)
-            XCTAssertEqual(lcm.sign, vector.operands[2].sign, file: vector.file, line: vector.line)
         }
     }
 
@@ -321,9 +159,6 @@ final class ArbitraryIntTests: XCTestCase {
 //            print("  Val = \(vector.result.debugDescription)")
 //            print("  Out = \(value.debugDescription)")
             XCTAssertEqual(value, vector.result, file: vector.file, line: vector.line)
-            XCTAssertEqual(value.storage.hexEncodedString(), vector.result.storage.hexEncodedString(), file: vector.file, line: vector.line)
-            XCTAssertEqual(value.bitWidth, vector.result.bitWidth, file: vector.file, line: vector.line)
-            XCTAssertEqual(value.sign, vector.result.sign, file: vector.file, line: vector.line)
         }
     }
 
@@ -337,9 +172,6 @@ final class ArbitraryIntTests: XCTestCase {
 //            print("  Val = \(vector.result.debugDescription)")
 //            print("  Out = \(value.debugDescription)")
             XCTAssertEqual(value, vector.result, file: vector.file, line: vector.line)
-            XCTAssertEqual(value.storage.hexEncodedString(), vector.result.storage.hexEncodedString(), file: vector.file, line: vector.line)
-            XCTAssertEqual(value.bitWidth, vector.result.bitWidth, file: vector.file, line: vector.line)
-            XCTAssertEqual(value.sign, vector.result.sign, file: vector.file, line: vector.line)
         }
     }
 
@@ -353,9 +185,6 @@ final class ArbitraryIntTests: XCTestCase {
 //            print("  Val = \(vector.result.debugDescription)")
 //            print("  Out = \(value.debugDescription)")
             XCTAssertEqual(value, vector.result, file: vector.file, line: vector.line)
-            XCTAssertEqual(value.storage.hexEncodedString(), vector.result.storage.hexEncodedString(), file: vector.file, line: vector.line)
-            XCTAssertEqual(value.bitWidth, vector.result.bitWidth, file: vector.file, line: vector.line)
-            XCTAssertEqual(value.sign, vector.result.sign, file: vector.file, line: vector.line)
         }
     }
 }
