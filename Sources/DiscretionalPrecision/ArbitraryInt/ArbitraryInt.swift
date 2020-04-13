@@ -41,7 +41,7 @@ public struct ArbitraryInt {
     /// possible to do signed operations. It turns out compensating manually for
     /// a sign flag is still easier than maintaining two's complement when the
     /// bit width of the value isn't fixed.
-    public var sign: Bool
+    @usableFromInline internal var sign: Bool
     
     /// We support arbitrary widths, not just "arbitrary widths that are
     /// multiples of 64". As a result, the correct bit width of the value is not
