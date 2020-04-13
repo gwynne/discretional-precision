@@ -138,19 +138,14 @@ extension ArbitraryInt: SignedInteger {
     
     /// `ExpressibleByIntegerLiteral` conformance. Just forward to `init(_:)`
     @inlinable public init(integerLiteral value: Int64) { self.init(value) }
-        
-    /// Convenience subscript overloads for the individual digits in the
-    /// `storage` array. Permits fine control over bounds checking and
-    /// defaulted values.
-    internal subscript(infinite i: Storage.Index) -> Storage.Element { i >= storage.endIndex ? 0 : storage[i] } // implicit pad on right to `Index.max`
-    internal subscript(infinite r: PartialRangeFrom<Storage.Index>) -> FlattenSequence<[AnySequence<Storage.Element>]> { // implicit pad on right to infinity
-        [AnySequence(storage[r]), AnySequence(sequence(first: 0, next: { _ in 0 }))].joined()
-    }
-    internal subscript(unsafe i: Storage.Index) -> Storage.Element { storage.indices.contains(i) ? storage[i] : 0 } // zero for ANY out of bounds index, use with care
-    internal subscript<R: BoundedRangeExpression>(unsafe r: R) -> FlattenSequence<[AnySequence<Storage.Element>]> where R.Bound == Storage.Index { // pads out of bound edges with zeroes on both sides, use with care
-        [AnySequence(repeatElement(0, count: Swift.max(storage.startIndex - r.lowerBound, 0))),
-            AnySequence(storage[r.relative(to: storage).clamped(to: storage.startIndex..<storage.endIndex)]),
-        AnySequence(repeatElement(0, count: Swift.max(r.upperBound - storage.endIndex - 1, 0)))].joined()
+    
+    // MARK: - Utility subscripts
+    
+    /// Convenience subscript which presents the appearance of an infinite
+    /// number of leading zeroes in the storage. Useful when iterating the
+    /// digits of two values at once to avoid extra bounds checks.
+    internal subscript(infinite i: Storage.Index) -> Storage.Element {
+        i >= storage.endIndex ? 0 : storage[i]
     }
     
     /// Common implementation for / and %. Override the stdlib implementation
@@ -173,9 +168,10 @@ extension ArbitraryInt: SignedInteger {
         let n = x.storage.endIndex - 1, t = y.storage.endIndex - 1
         var q = Storage(repeating: 0, count: n - t + 1)
         let ybnt = (y << ((n - t) << Self.radixBitShift))
+        let y2 = t < 2 ? y.magnitude : ArbitraryInt(storage: t > 0 ? [y.storage[t - 1], y.storage[t]] : [y.storage[t]], sign: false)
         
         debug(.Quot, state: ["λ": λ, "n": n, "t": t])
-        debug(.Quot, state: ["x": x, "y": y, "ybnt": ybnt])
+        debug(.Quot, state: ["x": x, "y": y, "ybnt": ybnt, "y2=y[t-1...t]": y2])
         while x >= ybnt {
             q[n - t] += 1
             x -= ybnt
@@ -189,13 +185,16 @@ extension ArbitraryInt: SignedInteger {
                 q[j] = .max
                 debug(.Quot, state: ["x[i]": x[infinite: i].hexEncodedString(), "y[t]": y.storage[t].hexEncodedString(), "q[j]": q[j].hexEncodedString()], "x[i] == y[t]")
             } else {
-                let res = y.storage[t].dividingFullWidth((high: x[unsafe: i], low: x[unsafe: i - 1]))
+                let res = y.storage[t].dividingFullWidth((high: x[infinite: i], low: x[infinite: i - 1]))
                 q[j] = res.quotient.magnitude
                 debug(.Quot, state: ["x[i-1...i]/y[t]": "\(res.quotient.hexEncodedString()) REM \(res.remainder.hexEncodedString())", "q[j]": q[j].hexEncodedString()])
             }
-            let y2 = ArbitraryInt(storage: Array(y[unsafe: (t - 1)...t]).normalized(), sign: false)
-            let x3 = ArbitraryInt(storage: Array(x[unsafe: (i - 2)...i]).normalized(), sign: false)
-            debug(.Quot, state: ["y2=y[t-1...t]": y2, "x3=x[i-2...i]": x3])
+            let x3 = ArbitraryInt(storage: [
+                x.storage.indices.contains(i - 2) ? x.storage[i - 2] : 0,
+                x.storage.indices.contains(i - 1) ? x.storage[i - 1] : 0,
+                x.storage.indices.contains(i - 0) ? x.storage[i - 0] : 0,
+            ].normalized(), sign: false)
+            debug(.Quot, state: ["x3=x[i-2...i]": x3])
             while ArbitraryInt(q[j]) * y2 > x3 {
                 q[j] -= 1
                 debug(.Quot, state: ["q[j] * y2": ArbitraryInt(q[j] + 1) * y2, "q[j]": q[j].hexEncodedString()], "> x3")
