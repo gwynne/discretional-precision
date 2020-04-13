@@ -102,11 +102,10 @@ extension ArbitraryInt: SignedInteger {
     
     /// For any integral value of arbitrary size, make ourselves that size and
     /// copy the raw value directly. (Are there endianness concerns here?)
-    public init<T>(_ source: T) where T: BinaryInteger {
+    @inlinable public init<T>(_ source: T) where T: BinaryInteger {
         if T.self is Self.Type {
             self = unsafeBitCast(source, to: Self.self)
         } else {
-            guard source.magnitude.bitWidth > 0 else { fatalError("Nonsensical bit width!") }
             self.init(storage: .init(source.magnitude.words), sign: source.signum() < 0)
         }
     }
@@ -294,7 +293,7 @@ extension ArbitraryInt: SignedInteger {
     /// signed, emulation of two's complement behavior (which we have kept to in
     /// all other operations) requires that the result be `-(x + 1)`, which is
     /// not the same as flipping all the bits in our backing store.
-    public static prefix func ~ (x: ArbitraryInt) -> ArbitraryInt {
+    @inlinable public static prefix func ~ (x: ArbitraryInt) -> ArbitraryInt {
         return -(x + .one)
     }
 
@@ -395,7 +394,7 @@ extension ArbitraryInt: SignedInteger {
     }
 
     /// Extremely trivial LCM calculation via GCD.
-    public func lcm(_ rhs: ArbitraryInt) -> ArbitraryInt {
+    @inlinable public func lcm(_ rhs: ArbitraryInt) -> ArbitraryInt {
         if self == .zero && rhs == .zero { return .zero } // lcm(0, 0) = 0
         return (self * rhs).magnitude / gcd_bin(rhs).v
     }
@@ -417,23 +416,23 @@ extension ArbitraryInt {
     // AND, OR, and XOR operators for same. All versions return the result as an
     // arbitrary-precision value which must be explicitly converted to something
     // else if desired.
-    public static func % <RHS>(lhs: ArbitraryInt, rhs: RHS) -> ArbitraryInt where RHS: BinaryInteger { lhs % Self(rhs) }
-    public static func / <RHS>(lhs: ArbitraryInt, rhs: RHS) -> ArbitraryInt where RHS: BinaryInteger { lhs / Self(rhs) }
-    public static func * <RHS>(lhs: ArbitraryInt, rhs: RHS) -> ArbitraryInt where RHS: BinaryInteger { lhs * Self(rhs) }
-    public static func - <RHS>(lhs: ArbitraryInt, rhs: RHS) -> ArbitraryInt where RHS: BinaryInteger { lhs - Self(rhs) }
-    public static func + <RHS>(lhs: ArbitraryInt, rhs: RHS) -> ArbitraryInt where RHS: BinaryInteger { lhs + Self(rhs) }
-    public static func & <RHS>(lhs: ArbitraryInt, rhs: RHS) -> ArbitraryInt where RHS: BinaryInteger { lhs & Self(rhs) }
-    public static func | <RHS>(lhs: ArbitraryInt, rhs: RHS) -> ArbitraryInt where RHS: BinaryInteger { lhs | Self(rhs) }
-    public static func ^ <RHS>(lhs: ArbitraryInt, rhs: RHS) -> ArbitraryInt where RHS: BinaryInteger { lhs ^ Self(rhs) }
+    @inlinable public static func % <RHS>(lhs: ArbitraryInt, rhs: RHS) -> ArbitraryInt where RHS: BinaryInteger { lhs % Self(rhs) }
+    @inlinable public static func / <RHS>(lhs: ArbitraryInt, rhs: RHS) -> ArbitraryInt where RHS: BinaryInteger { lhs / Self(rhs) }
+    @inlinable public static func * <RHS>(lhs: ArbitraryInt, rhs: RHS) -> ArbitraryInt where RHS: BinaryInteger { lhs * Self(rhs) }
+    @inlinable public static func - <RHS>(lhs: ArbitraryInt, rhs: RHS) -> ArbitraryInt where RHS: BinaryInteger { lhs - Self(rhs) }
+    @inlinable public static func + <RHS>(lhs: ArbitraryInt, rhs: RHS) -> ArbitraryInt where RHS: BinaryInteger { lhs + Self(rhs) }
+    @inlinable public static func & <RHS>(lhs: ArbitraryInt, rhs: RHS) -> ArbitraryInt where RHS: BinaryInteger { lhs & Self(rhs) }
+    @inlinable public static func | <RHS>(lhs: ArbitraryInt, rhs: RHS) -> ArbitraryInt where RHS: BinaryInteger { lhs | Self(rhs) }
+    @inlinable public static func ^ <RHS>(lhs: ArbitraryInt, rhs: RHS) -> ArbitraryInt where RHS: BinaryInteger { lhs ^ Self(rhs) }
 
     // Shorthand self-assignment versions of the eight operators above.
-    public static func %= <RHS>(lhs: inout ArbitraryInt, rhs: RHS) where RHS: BinaryInteger { lhs %= Self(rhs) }
-    public static func /= <RHS>(lhs: inout ArbitraryInt, rhs: RHS) where RHS: BinaryInteger { lhs /= Self(rhs) }
-    public static func *= <RHS>(lhs: inout ArbitraryInt, rhs: RHS) where RHS: BinaryInteger { lhs *= Self(rhs) }
-    public static func -= <RHS>(lhs: inout ArbitraryInt, rhs: RHS) where RHS: BinaryInteger { lhs -= Self(rhs) }
-    public static func += <RHS>(lhs: inout ArbitraryInt, rhs: RHS) where RHS: BinaryInteger { lhs += Self(rhs) }
-    public static func &= <RHS>(lhs: inout ArbitraryInt, rhs: RHS) where RHS: BinaryInteger { lhs &= Self(rhs) }
-    public static func |= <RHS>(lhs: inout ArbitraryInt, rhs: RHS) where RHS: BinaryInteger { lhs |= Self(rhs) }
-    public static func ^= <RHS>(lhs: inout ArbitraryInt, rhs: RHS) where RHS: BinaryInteger { lhs ^= Self(rhs) }
+    @inlinable public static func %= <RHS>(lhs: inout ArbitraryInt, rhs: RHS) where RHS: BinaryInteger { lhs %= Self(rhs) }
+    @inlinable public static func /= <RHS>(lhs: inout ArbitraryInt, rhs: RHS) where RHS: BinaryInteger { lhs /= Self(rhs) }
+    @inlinable public static func *= <RHS>(lhs: inout ArbitraryInt, rhs: RHS) where RHS: BinaryInteger { lhs *= Self(rhs) }
+    @inlinable public static func -= <RHS>(lhs: inout ArbitraryInt, rhs: RHS) where RHS: BinaryInteger { lhs -= Self(rhs) }
+    @inlinable public static func += <RHS>(lhs: inout ArbitraryInt, rhs: RHS) where RHS: BinaryInteger { lhs += Self(rhs) }
+    @inlinable public static func &= <RHS>(lhs: inout ArbitraryInt, rhs: RHS) where RHS: BinaryInteger { lhs &= Self(rhs) }
+    @inlinable public static func |= <RHS>(lhs: inout ArbitraryInt, rhs: RHS) where RHS: BinaryInteger { lhs |= Self(rhs) }
+    @inlinable public static func ^= <RHS>(lhs: inout ArbitraryInt, rhs: RHS) where RHS: BinaryInteger { lhs ^= Self(rhs) }
 
 }
