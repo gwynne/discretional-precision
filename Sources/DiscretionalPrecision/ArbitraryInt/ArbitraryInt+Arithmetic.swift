@@ -5,20 +5,26 @@ extension ArbitraryInt {
     /// is essentially a normalizing version of "schoolbook" division based on
     /// using the stdlib's "full-width" division operation as a primitive.
     public func quotientAndRemainder(dividingBy rhs: ArbitraryInt) -> (quotient: ArbitraryInt, remainder: ArbitraryInt) {
-        debug(.Quot, state: ["d": self, "m": rhs])
+        debug(.Quot, state: ["d": self, "m": rhs]) // Inputs
+        
+        // Check for zero divides and various shortcut results.
         guard rhs != .zero else { fatalError("Division by zero") }
         guard self.magnitude >= rhs.magnitude else { return (quotient: .zero, remainder: self) } // divisor>dividend, shortcut result; covers zero property too
         guard rhs != .one else { return (quotient: self, remainder: .zero) } // identity property
         guard rhs != .minusOne else { return (quotient: -self, remainder: .zero) } // negative identity; division by -1 is the unary negation operator
         
+        // If the values are small enough, skip to the stdlib implementation.
         if self.bitWidth <= Self.radixBitWidth && rhs.bitWidth <= (Self.radixBitWidth << 1) {
             let (q, r) = rhs.storage[0].dividingFullWidth((high: self[infinite: 1], low: self.storage[0]))
             return (quotient: ArbitraryInt(storage: [q], sign: self.sign != rhs.sign && q != 0), remainder: ArbitraryInt(storage: [r], sign: self.sign && r != 0))
         }
         
+        // Normalize inputs
         var x = self.magnitude, y = rhs.magnitude
         let λ = Swift.max(y.storage.last!.leadingZeroBitCount - 1, 0)
         (x, y) = (x << λ, y << λ) // normalize
+        
+        // Setup initial state and precalculated values
         let n = x.storage.endIndex - 1, t = y.storage.endIndex - 1
         var q = Storage(repeating: 0, count: n - t + 1)
         let ybnt = (y << ((n - t) << Self.radixBitShift))
@@ -26,6 +32,8 @@ extension ArbitraryInt {
         
         debug(.Quot, state: ["λ": λ, "n": n, "t": t])
         debug(.Quot, state: ["x": x, "y": y, "ybnt": ybnt, "y2=y[t-1...t]": y2])
+        
+        // Loop calculating quotient digits.
         while x >= ybnt {
             q[n - t] += 1
             x -= ybnt
@@ -37,11 +45,10 @@ extension ArbitraryInt {
             
             if x[infinite: i] == y.storage[t] {
                 q[j] = .max
-                debug(.Quot, state: ["x[i]": x[infinite: i].hexEncodedString(), "y[t]": y.storage[t].hexEncodedString(), "q[j]": q[j].hexEncodedString()], "x[i] == y[t]")
+                debug(.Quot, state: ["x[i]": x[infinite: i].hexEncodedString(), "q[j]": q[j].hexEncodedString()], "x[i] == y[t]")
             } else {
-                let res = y.storage[t].dividingFullWidth((high: x[infinite: i], low: x[infinite: i - 1]))
-                q[j] = res.quotient.magnitude
-                debug(.Quot, state: ["x[i-1...i]/y[t]": "\(res.quotient.hexEncodedString()) REM \(res.remainder.hexEncodedString())", "q[j]": q[j].hexEncodedString()])
+                q[j] = y.storage[t].dividingFullWidth((high: x[infinite: i], low: x[infinite: i - 1])).quotient.magnitude
+                debug(.Quot, state: ["q[j]": q[j].hexEncodedString()])
             }
             let x3 = ArbitraryInt(storage: [
                 x.storage.indices.contains(i - 2) ? x.storage[i - 2] : 0,
@@ -62,8 +69,11 @@ extension ArbitraryInt {
                 debug(.Quot, state: ["x": x, "q[j]": q[j].hexEncodedString()], "x < 0")
             }
         }
+        
+        // Denormalize the remainder, normalize the quotient, and give it the correct sign.
         let λr = x, r = λr >> λ
         let qq = ArbitraryInt(storage: q.normalized(), sign: self.sign != rhs.sign && q.normalized() != [0])
+        
         debug(.Quot, state: ["λr": λr, "r": r, "q": q.hexEncodedString()])
         debug(.Quot, state: ["quotient": qq, "remainder": ArbitraryInt(storage: r.storage, sign: self.sign)])
         return (quotient: qq, remainder: ArbitraryInt(storage: r.storage, sign: self.sign))
@@ -87,6 +97,8 @@ extension ArbitraryInt {
     /// at math comes along or I learn new stuff.
     public func product(multipliedBy rhs: ArbitraryInt) -> ArbitraryInt {
         debug(.Prod, state: ["u": self, "v": rhs])
+        
+        // Check for various shortcut results
         guard self != .zero && rhs != .zero else { return .zero } // zero property
         guard self != .one else { return rhs } // identity property
         guard rhs != .one else { return self } // identity property
@@ -94,22 +106,26 @@ extension ArbitraryInt {
         guard rhs != .minusOne else { return -self } // negative identity = unary negation
         assert(self.storage.count < UInt(Int.max) && rhs.storage.count < UInt(Int.max))
         
+        // State setup
         let n = self.storage.endIndex, t = rhs.storage.endIndex
         var w = Storage(repeating: 0, count: n + t), v = Storage.Element(0)
-        var carry1 = false, carry2 = false
+        var carry1 = UInt(0), carry2 = UInt(0)
         
         debug(.Prod, state: ["n": n, "t": t])
         for i in 0..<t {
             for j in 0..<n {
-                (w[i &+ j], carry2) = w[i &+ j].addingReportingOverflow(w[i &+ n])
+                (carry1, w[i &+ j]) = w[i &+ j].addedPreservingCarry(to: w[i &+ n], carryin: 0)
                 (w[i &+ n], v) = self.storage[j].multipliedFullWidth(by: rhs.storage[i])
-                (w[i &+ j], carry1) = w[i &+ j].addingReportingOverflow(v)
-                w[i &+ n] &+= (carry1 ? 1 : 0) &+ (carry2 ? 1 : 0)
+                (carry2, w[i &+ j]) = w[i &+ j].addedPreservingCarry(to: v, carryin: 0)
+                w[i &+ n] &+= carry1 &+ carry2
             }
             debug(.Prod, state: ["i": i, "w": w.hexEncodedString()])
         }
+        
+        // Normalize output and decide sign
         while w.last == 0 { w.removeLast() }
         let product = ArbitraryInt(storage: w, sign: self.sign != rhs.sign)
+        
         debug(.Prod, state: ["product": product])
         return product
     }
@@ -121,6 +137,8 @@ extension ArbitraryInt {
     /// for all inputs with no infinite loops (we hope).
     public func difference(subtracting rhs: ArbitraryInt) -> ArbitraryInt {
         debug(.Diff, state: ["x": self, "y": rhs])
+        
+        // Check for shortcuts and reformulate as addition when need be
         guard self != rhs else { return .zero } // optimize the obvious
         guard rhs != .zero else { return self }
         guard rhs < self else { return -(rhs - self) } // auto-commutative property
@@ -131,6 +149,7 @@ extension ArbitraryInt {
         // -2 - -5 -> (-2 + 5), -5 - -2 -> -(-2 - -5) -> -(-2 + 5)
         // Therefore subtraction per below may always assume positive numbers and last-place borrowing.
 
+        // Setup state
         var n = self.storage.count, result = Storage(repeating: 0, count: n), borrow = Storage.Element.zero
         
         // Subtract each group of bits in sequence with propagated borrow.
@@ -139,10 +158,13 @@ extension ArbitraryInt {
             (borrow, result[i]) = rhs[infinite: i].subtractingPreservingCarry(from: self.storage[i], carryin: borrow)
             debug(.Diff, state: ["lWord - rWord": result[i].hexEncodedString(), "borrow": borrow])
         }
+        
         // Given rhs < self (already checked), taking a borrow out of the last word is illegal.
         assert(borrow == .zero)
+        
         // Drop all trailing zero digits of the results array, making sure to leave at least one.
         while result.count > 1 && result.last == .zero { result.removeLast() }
+        
         // Return result as `ArbitraryInt`
         let difference = ArbitraryInt(storage: result, sign: false)
         debug(.Diff, state: ["difference": difference])
@@ -155,19 +177,27 @@ extension ArbitraryInt {
     /// Tries as hard as it can to avoid allocations and copying.
     public func sum(addedTo rhs: ArbitraryInt) -> ArbitraryInt {
         debug(.Sum, state: ["a": self, "b": rhs])
+        
+        // Check shortcuts and reformulate as subtraction as need be
         guard self != .zero else { return rhs } // zero property
         guard rhs != .zero else { return self } // zero property
         if self.sign { return rhs - (-self) } // rewrite -a + b as b - a; -5 + -2 -> -(5 + 2), -5 + 2 -> -(5 - 2), -5 + 7 -> 7 - 5
         if rhs.sign { return self - (-rhs) } // rewrite a + -b as a - b;  5 + -2 -> 5 - 2, 5 + -7 -> 5 - 7 -> -(7 - 5)
 
-        // If we get here both operands are positive
+        // If we get here both operands are positive; setup initial state
         let n = self.storage.endIndex, t = rhs.storage.endIndex, z = Swift.max(n, t)
         var result = Storage(repeating: 0, count: z), carry = Storage.Element.zero
         
         debug(.Sum, state: ["n": n, "t": t, "z": z])
+        
+        // Add the words of the operands in forward order, chaining carries.
         for i in 0..<z { (carry, result[i]) = self[infinite: i].addedPreservingCarry(to: rhs[infinite: i], carryin: carry) }
         debug(.Sum, state: ["result[0..<z]": result.hexEncodedString(), "carry": carry])
+        
+        // Apply final carry, if any
         if carry != .zero { result.append(carry) }
+        
+        // Check consistency and return result
         assert(result.normalized() == result)
         debug(.Sum, state: ["sum": ArbitraryInt(storage: result, sign: false)])
         return ArbitraryInt(storage: result, sign: false)
