@@ -1,3 +1,5 @@
+// MARK: Base ArbitraryInt type
+
 /// As a `SignedIntger`, we implement `BinaryInteger`, `SignedNumeric`,
 /// `Numeric`, `AdditiveArithmetic`, `Equatable`, `ExpressibleByIntegerLiteral`,
 /// `CustomStringConvertible`, `Hashable`, and `Strideable`. A lot of this comes
@@ -67,6 +69,8 @@ public struct ArbitraryInt {
 
 extension ArbitraryInt: SignedInteger {
 
+    // MARK: - Various protocol requirements
+    
     /// Counts zero-words in the backing store and multiplies them by the bit
     /// width for efficiency, adding the trailing count from the first non-zero
     /// word (which must exist by our definition of this type unless the total
@@ -74,7 +78,7 @@ extension ArbitraryInt: SignedInteger {
     /// trailing zero bit count of a negative 2's-complement integer is the same
     /// as that of its magnitude, so no extra consideration is required. For a
     /// zero value, we record it as 1 trailing zero bit.
-    public var trailingZeroBitCount: Int {
+    @inlinable public var trailingZeroBitCount: Int {
         guard storage != [0] else { return 1 }
         let firstNonzeroIndex = storage.firstIndex(where: { $0 != 0 })!
         return (firstNonzeroIndex << Self.radixBitShift) + storage[firstNonzeroIndex].trailingZeroBitCount
@@ -93,6 +97,8 @@ extension ArbitraryInt: SignedInteger {
     
     /// Magnitude is absolute value. Return a negated self if needed.
     @inlinable public var magnitude: ArbitraryInt { sign ? -self : self }
+    
+    // MARK: - Initializers
     
     /// For any integral value of arbitrary size, make ourselves that size and
     /// copy the raw value directly. (Are there endianness concerns here?)
@@ -186,17 +192,18 @@ extension ArbitraryInt: SignedInteger {
     /// In-place addition
     @inlinable public static func += (lhs: inout ArbitraryInt, rhs: ArbitraryInt) { lhs = lhs + rhs }
 
+    // MARK: - Equatable and Comparable
     
     /// `Equatable`. Digits by bitwise compare, and sign must match. (Checking
     /// bit width requires extra work querying the storage array which just
     /// slows things down versus equating it.)
-    public static func == (lhs: ArbitraryInt, rhs: ArbitraryInt) -> Bool {
+    @inlinable public static func == (lhs: ArbitraryInt, rhs: ArbitraryInt) -> Bool {
         return lhs.storage == rhs.storage && lhs.sign == rhs.sign
     }
     
     /// Comparison operator. Noticeably faster than the default implementation
     /// via `BinaryInteger`.
-    public static func < (lhs: ArbitraryInt, rhs: ArbitraryInt) -> Bool {
+    @inlinable public static func < (lhs: ArbitraryInt, rhs: ArbitraryInt) -> Bool {
         if lhs.sign && rhs.sign { return -rhs > -lhs } // if both negative, flip the compare
         if lhs.sign != rhs.sign { return lhs.sign } // if only one negative, the negative one is smaller
         if rhs.storage.count > lhs.storage.count { return true }
@@ -207,6 +214,8 @@ extension ArbitraryInt: SignedInteger {
         }
         return false // they were equal, which means not less than
     }
+    
+    // MARK: - Bitwise operators
     
     /// Shift the entire value of `lhs` left by `rhs` bits, zero-filling from
     /// the right. This operation effectively adds the number of bits shifted to
@@ -333,6 +342,8 @@ extension ArbitraryInt: SignedInteger {
         lhs.storage = (0..<Swift.max(lhs.storage.count, rhs.storage.count)).map { lhs[infinite: $0] ^ rhs[infinite: $0] }.normalized()
         lhs.sign = (lhs.sign != rhs.sign) && lhs != .zero
     }
+    
+    // MARK: - GCD and LCM
     
     /// `ax + by = v` where `v = gcd(x, y)`, extended binary algorithm.
     public func gcd_bin(_ rhs: ArbitraryInt) -> (a: ArbitraryInt, b: ArbitraryInt, v: ArbitraryInt) {
