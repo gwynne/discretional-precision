@@ -346,6 +346,11 @@ extension ArbitraryInt: SignedInteger {
     // MARK: - GCD and LCM
     
     /// `ax + by = v` where `v = gcd(x, y)`, extended binary algorithm.
+    ///
+    /// - TODO: This implementation produces INCORRECT values for certain inputs
+    ///   I was not yet able to track down what cases cause this; it only showed
+    ///   up when attempting to use the results to calculate a modular
+    ///   multiplicative inverse.
     public func gcd_bin(_ rhs: ArbitraryInt) -> (a: ArbitraryInt, b: ArbitraryInt, v: ArbitraryInt) {
         debug(.GCD, state: ["x": self, "y": rhs])
         guard self != rhs && rhs != .zero else { return (a: .zero, b: .zero, v: self) }
@@ -399,18 +404,14 @@ extension ArbitraryInt: SignedInteger {
 
 // MARK: - ArbitraryInt <-> BinaryInteger etc. operators
 
-// Additional operator overload signatures to enable various obvious and/or
-// useful interoperability scenarios with various types for various operators.
-// Almost also type-interoperating overloads return their results only as
-// `ArbitraryInt`. Doing so avoids a huge amount of consideration of how to best
-// handle the inevitabe plethora of out-of-bounds, value overflow, conversion
-// failure, and other such issues which would be involved in providing a less
-// restricted matrix of overloads. It's also easier on the compiler.
-//
-// Some of these have to actually be on the type, others have to not be.
-// Extensions try to keep it straight where possible.
-
+/// Additional operator overload signatures to enable various obvious and/or
+/// useful interoperability scenarios with various types for various operators.
+/// These return their results only as `ArbitraryInt`; doing so avoids a huge
+/// amount of consideration of how to best handle what would otherwise be a
+/// plethora of out-of-bounds, value overflow, conversion failure, and other
+/// such issues. It's also easier on the compiler.
 extension ArbitraryInt {
+
     // Modulus, division, multiplication, subtraction, and addition of
     // arbitrary-precision values of/by/from/to integer values. Also bitwise
     // AND, OR, and XOR operators for same. All versions return the result as an
@@ -425,9 +426,7 @@ extension ArbitraryInt {
     public static func | <RHS>(lhs: ArbitraryInt, rhs: RHS) -> ArbitraryInt where RHS: BinaryInteger { lhs | Self(rhs) }
     public static func ^ <RHS>(lhs: ArbitraryInt, rhs: RHS) -> ArbitraryInt where RHS: BinaryInteger { lhs ^ Self(rhs) }
 
-    // Shorthand self-assignment versions of the eight operators above. Same
-    // semantics, but integers are only supported on the right hand side. It isn't
-    // our job to provide these operators for other types anyhow.
+    // Shorthand self-assignment versions of the eight operators above.
     public static func %= <RHS>(lhs: inout ArbitraryInt, rhs: RHS) where RHS: BinaryInteger { lhs %= Self(rhs) }
     public static func /= <RHS>(lhs: inout ArbitraryInt, rhs: RHS) where RHS: BinaryInteger { lhs /= Self(rhs) }
     public static func *= <RHS>(lhs: inout ArbitraryInt, rhs: RHS) where RHS: BinaryInteger { lhs *= Self(rhs) }
@@ -436,4 +435,5 @@ extension ArbitraryInt {
     public static func &= <RHS>(lhs: inout ArbitraryInt, rhs: RHS) where RHS: BinaryInteger { lhs &= Self(rhs) }
     public static func |= <RHS>(lhs: inout ArbitraryInt, rhs: RHS) where RHS: BinaryInteger { lhs |= Self(rhs) }
     public static func ^= <RHS>(lhs: inout ArbitraryInt, rhs: RHS) where RHS: BinaryInteger { lhs ^= Self(rhs) }
+
 }
