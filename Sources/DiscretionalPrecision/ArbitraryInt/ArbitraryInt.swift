@@ -493,8 +493,8 @@ extension ArbitraryInt {
         lhs.debug(.RShift, state: ["x": lhs, "y": rhs])
         guard rhs >= .zero else { lhs <<= rhs.magnitude; return }
         guard rhs > .zero, lhs != .zero else { return } // no point shifting by zero or shifting zeroes
-        if rhs >= lhs.bitWidth { lhs = lhs.sign ? -1 : .zero; return } // if shifting all bits out, just reset to zero
         let (wholeDigitsDropped, bitsDropped) = (Int(exactly: rhs)! >> radixBitShift, Int(exactly: rhs)! & (radixBitWidth - 1))
+        if wholeDigitsDropped >= lhs.storage.count { lhs = lhs.sign ? .minusOne : .zero; return }
         // Drop entire digits from the start of the storage list. Much simpler and faster than shifting bits down.
         lhs.storage.removeFirst(wholeDigitsDropped)
         lhs.debug(.RShift, state: ["whole": wholeDigitsDropped, "remBits": bitsDropped])
@@ -577,13 +577,19 @@ extension ArbitraryInt {
             assert(u > .zero)
             while u.storage[0] & 0x1 == 0 {
                 u >>= 1
-                (A, B) = ((A + ((A & 0x1) == 0 && (B & 0x1) == 0 ? 0 : y)) >> 1, (B - ((A & 0x1) == 0 && (B & 0x1) == 0 ? 0 : x)) >> 1)
+                if A.storage[0] & 0x1 != 0 || B.storage[0] & 0x1 != 0 {
+                    (A, B) = (A + y, B - x)
+                }
+                (A, B) = (A >> 1, B >> 1)
                 debug(.GCD, state: ["u": u, "A": A, "B": B], "u%2=0")
             }
             assert(v > .zero)
             while v.storage[0] & 0x1 == 0 {
                 v >>= 1
-                (C, D) = ((C + ((C & 0x1) == 0 && (D & 0x1) == 0 ? 0 : y)) >> 1, (D - ((C & 0x1) == 0 && (D & 0x1) == 0 ? 0 : x)) >> 1)
+                if C.storage[0] & 0x1 != 0 || D.storage[0] & 0x1 != 0 {
+                    (C, D) = (C + y, D - x)
+                }
+                (C, D) = (C >> 1, D >> 1)
                 debug(.GCD, state: ["v": v, "C": C, "D": D], "v%2=0")
             }
             if u >= v {
