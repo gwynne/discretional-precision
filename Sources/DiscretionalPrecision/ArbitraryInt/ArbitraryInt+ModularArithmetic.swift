@@ -130,20 +130,20 @@ extension ArbitraryInt {
         //assert(mP == nil || mP == (-m).inverse(Self.radix)) // disabled because having it slows debug builds down by three orders of magnitude or so
         assert(self > 0 && self < m && rhs > 0 && rhs < m)
         
-        let x = self, y = rhs, n = m.words.count
-        let mP = mP ?? ((-m).inverse(modulo: Self.radix)!.words[0]) // calculate m′ if not provided, fatal error if it doesn't exist
+        let x = self, y = rhs, n = m.storage.count
+        let mP = mP ?? ((-m).inverse(modulo: Self.radix)!.storage[0]) // calculate m′ if not provided, fatal error if it doesn't exist
         var A = Self.zero
-        let y0 = y.words[0] // Precache y[0]
+        let y0 = y.storage[0] // Precache y[0]
         
         debug(.ModMul, state: ["x": x, "y": y, "m": m, "n": n, "m′": mP.hexEncodedString()]) // initial state
         
         for i in 0..<n {
-            let xi = i < x.words.count ? x.words[i] : 0 // right-pad x with zeroes; can't optimize by breaking the loop due to Montgomery representation
-            let u = (A.words[0] &+ xi &* y0) &* mP // `u`'s value is taken mod `b`, which is the same as doing the math in single-precision
+            let xi = i < x.storage.count ? x.storage[i] : 0 // right-pad x with zeroes; can't optimize by breaking the loop due to Montgomery representation
+            let u = (A.storage[0] &+ xi &* y0) &* mP // `u`'s value is taken mod `b`, which is the same as doing the math in single-precision
             
             A += (y * xi) + (m * u) // this is the most heavily loaded line of code in the entire codebase during, for example, an RSA encrypt
-            A.words.removeFirst() // get the next A[0] value
-            if A.words.isEmpty { A = .zero } else { A.bitWidth -= Self.radixBitWidth } // fixup A
+            A.storage.removeFirst() // get the next A[0] value
+            if A.storage.isEmpty { A = .zero } // fixup A
             
             debug(.ModMul, state: ["i": i, "x[i]": xi.hexEncodedString(), "u": u.hexEncodedString(), "A": A]) // latest state
         }
@@ -184,8 +184,8 @@ extension ArbitraryInt {
         let x = (self % m) + (self.sign ? m.magnitude : 0) // normalize `self` as `x`
         guard x != .zero && x != .one else { return x } // shortcut - any exponentiation of zero or one is itself, regardless of modulus
 
-        let mP = ((-m).inverse(modulo: Self.radix)!).words[0] // anything mod radix is always exactly one "digit" long
-        let R = ArbitraryInt.one << (ArbitraryInt(m.words.count) << Self.radixBitShift), t = e.bitWidth // derive `R = b↑n` via bitshifting
+        let mP = ((-m).inverse(modulo: Self.radix)!).storage[0] // anything mod radix is always exactly one "digit" long
+        let R = ArbitraryInt.one << (ArbitraryInt(m.storage.count) << Self.radixBitShift), t = e.bitWidth // derive `R = b↑n` via bitshifting
         let xTilde = x.montgomeryReducedProduct(with: (R * R) % m, mod: m, modPrime: mP) // convert `x` to Montgomery representation
         var A = R % m
         debug(.ModExp, state: ["e": e, "m": m, "m'": mP.hexEncodedString(), "R": R, "t": t, "x": x, "x~": xTilde, "A": A]) // initial state

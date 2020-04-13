@@ -4,7 +4,7 @@ extension ArbitraryInt: CustomDebugStringConvertible {
     /// A structured, debugging-friendly visual representation of the integer's
     /// sign, magnitude, and bit width. Not intended for production use.
     public var debugDescription: String {
-        return "\(self.sign ? "-" : "")\(self.words.hexEncodedString()) [\(self.bitWidth)]"
+        return "\(self.sign ? "-" : "")\(self.storage.hexEncodedString()) [\(self.bitWidth)]"
     }
     
 }

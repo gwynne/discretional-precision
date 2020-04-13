@@ -10,15 +10,15 @@ extension ArbitraryInt {
     /// - Note: `ArbitraryInt.init(integerLiteral: 0)` is considerably slower
     ///   than this accessor, sometimes by multiple orders of magnitude due to
     ///   the overhead of allocations.
-    public static let zero: ArbitraryInt = .init(words: [0], sign: false, bitWidth: 1)
+    public static let zero: ArbitraryInt = .init(storage: [0], sign: false)
     
     /// A static accessor for `1`; this constant value is used as often as zero
     /// in various parts of `ArbitraryInt`'s implementation.
-    public static let one: ArbitraryInt = .init(words: [1], sign: false, bitWidth: 1)
+    public static let one: ArbitraryInt = .init(storage: [1], sign: false)
     
     /// A static accessor for `-1`, another constant value which is used fairly
     /// often in various parts of `ArbitraryInt`'s implementation.
-    public static let minusOne: ArbitraryInt = .init(words: [1], sign: true, bitWidth: 1)
+    public static let minusOne: ArbitraryInt = .init(storage: [1], sign: true)
     
 }
 

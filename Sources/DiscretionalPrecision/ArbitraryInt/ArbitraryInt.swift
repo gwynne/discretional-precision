@@ -11,15 +11,26 @@
 /// more or less implicit on numeric types, and that the comparison operators
 /// work regardless, whether you implement them type-specificallly or not.
 public struct ArbitraryInt: SignedInteger, LosslessStringConvertible {
-
-    /// The raw 64-bit words in LSW->MSW order, representing in combination
-    /// all the bits of the arbitrary-precision value. Each individual word is
+    
+    /// Typealias for our internal storage, which does _not_ conform to the
+    /// expectations of `BinaryInteger.Words`, and is easier to type multiple
+    /// times than the array form, especially given the funky way Xcode insists
+    /// on "helping out" when typing delimiters of any kind. This, like the
+    /// storage itself, is `internal` instead of `private` to support the
+    /// splitting of the implementation across many files and to support the
+    /// storage being `@usableFromInline`.
+    @usableFromInline internal typealias Storage = Array<UInt>
+    
+    /// The raw 64-bit "digits" in LSW->MSW order, representing in combination
+    /// all the bits of the arbitrary-precision value. Each individual digit is
     /// stored in machine-native endianness (so, little endian). One of these
-    /// words is conceptually exactly one "digit" in base `b` (see the `radix`
+    /// values is conceptually exactly one digit in base `b` (see the `radix`
     /// property), where `b` is `1 << UInt.bitWidth`. The implications of a
     /// base-18-quintillion numbering system are quite interesting, for sure.
-    /// See `BinaryInteger.words`.
-    public var words: [UInt]
+    /// `internal` instead of `private` to support the implementation of this
+    /// type being spread over many files, and also so it can be usable from
+    /// inline for performance.
+    @usableFromInline internal var storage: Storage
     
     /// The sign flag of a given arbitrary-precision integer. Signed values are
     /// stored the same way as unsigned ones, aside this flag. This is basically
@@ -32,25 +43,24 @@ public struct ArbitraryInt: SignedInteger, LosslessStringConvertible {
     /// bit width of the value isn't fixed.
     public var sign: Bool
     
-    /// Since we support arbitrary widths, not "arbitrary widths that are
-    /// multiples of 64", we need to separately track our current total bit
-    /// width so we can ignore the top `words.count * UInt.bitWidth - bitWidth`
-    /// bits. Otherwise this would be computed as N words * UInt bits. Notably,
-    /// this can be unambiguously computed by examining `words` (as long as the
-    /// array has been correctly normalized), but we maintain the separate value
-    /// regardless as an optimization and as a consistency cross-check.
+    /// We support arbitrary widths, not just "arbitrary widths that are
+    /// multiples of 64". As a result, the correct bit width of the value is not
+    /// an entirely trivial value, nor is fixed across mutations. We could store
+    /// the calculated value as an optimization, but making the calculation
+    /// itself inlinable should be sufficiently performant so long as the
+    /// optimizer can be trusted to coalesce multiple invocations. A value of
+    /// zero has bit width 1, which must be handled specially.
     /// See `BinaryInteger.bitWidth`.
-    public var bitWidth: Int
+    @inlinable public var bitWidth: Int { Swift.max(1, (self.storage.count << Self.radixBitShift) - self.storage.last!.leadingZeroBitCount) }
 
-    /// An internal utility initializer for very fast construction.
-    /// Does not assert as heavily as the usual initializers!
-    internal init(words: Words, sign: Bool, bitWidth: Int) {
-        self.words = words
+    /// Internal utility initializer for very fast construction. The assertions
+    /// which guarantee correctness of the representation are present in this
+    /// initializer, but only fire in debug builds.
+    @usableFromInline internal init(storage: Storage, sign: Bool) {
+        self.storage = storage
         self.sign = sign
-        self.bitWidth = bitWidth
-        assert(!self.words.isEmpty)
-        assert(self.bitWidth == self.bitWidthAsTotalWordBitsMinusLeadingZeroes())
-        assert(self.sign == false || (self.words.count > 1 || self[0] != 0))
+        assert(!self.storage.isEmpty) // There must be at least one digit.
+        assert(self.storage.last! != 0 || (self.storage.count == 1 && self.sign == false)) // The last digit must be non-zero unless it's alone and positive.
     }
     
 }
@@ -76,12 +86,12 @@ extension ArbitraryInt {
     /// slightly more semantically useful at extremely high bit widths.
     public var description: String {
         if self == .zero { return "0" }
-        if self.bitWidth < Self.radixBitWidth { return "\(sign ? "-" : "")\(words[0].hexEncodedString())" }
+        if self.bitWidth < Self.radixBitWidth { return "\(sign ? "-" : "")\(storage[0].hexEncodedString())" }
         
         // We flip the endianness and display the word array in MSW-first order
         // to yield a representation which largely corresponds to the
         // serialization format used by OpenSSL's `bn` library.
-        return "\(self.sign ? "-" : "")\(self.words.reversed().map { $0.hexEncodedString(prefix: false) }.joined())"
+        return "\(self.sign ? "-" : "")\(self.storage.reversed().map { $0.hexEncodedString(prefix: false) }.joined())"
     }
     
     /// Counts zero-words in the backing store and multiplies them by the bit
@@ -92,20 +102,20 @@ extension ArbitraryInt {
     /// as that of its magnitude, so no extra consideration is required. For a
     /// zero value, we record it as 1 trailing zero bit.
     public var trailingZeroBitCount: Int {
-        guard words != [0] else { return 1 }
-        let firstNonzeroIndex = words.firstIndex(where: { $0 != 0 })!
-        return (firstNonzeroIndex << Self.radixBitShift) + words[firstNonzeroIndex].trailingZeroBitCount
+        guard storage != [0] else { return 1 }
+        let firstNonzeroIndex = storage.firstIndex(where: { $0 != 0 })!
+        return (firstNonzeroIndex << Self.radixBitShift) + storage[firstNonzeroIndex].trailingZeroBitCount
     }
     
     /// Override the default `negate()`, otherwise it defaults to `0 - self`,
     /// which would recurse since we implement that in terms of negation.
     @inlinable public mutating func negate() {
-        self.sign = self.words == [0] ? false : !self.sign
+        self.sign = self.storage == [0] ? false : !self.sign
     }
     
     /// Override the default implementation of `signum()` because we can provide
     /// a more efficient answer than `(self > 0) - (self < 0)`.
-    @inlinable public func signum() -> ArbitraryInt { words == [0] ? .zero : (sign ? -1 : 1) }
+    @inlinable public func signum() -> ArbitraryInt { storage == [0] ? .zero : (sign ? -1 : 1) }
     
     /// Magnitude is absolute value. Return a negated self if needed.
     @inlinable public var magnitude: ArbitraryInt { sign ? -self : self }
@@ -113,8 +123,12 @@ extension ArbitraryInt {
     /// For any integral value of arbitrary size, make ourselves that size and
     /// copy the raw value directly. (Are there endianness concerns here?)
     public init<T>(_ source: T) where T: BinaryInteger {
-        guard source.magnitude.bitWidth > 0 else { fatalError("Nonsensical bit width!") }
-        self.init(words: source.magnitude.words, sign: source.signum() < 0)
+        if T.self is Self.Type {
+            self = unsafeBitCast(source, to: Self.self)
+        } else {
+            guard source.magnitude.bitWidth > 0 else { fatalError("Nonsensical bit width!") }
+            self.init(storage: .init(source.magnitude.words), sign: source.signum() < 0)
+        }
     }
     
     /// We can represent any integral value of arbitrary size exactly.
@@ -165,7 +179,7 @@ extension ArbitraryInt {
         let hexSign = description.first! == "-"
         let hexBytes = chunk(lpadTpo2(description.dropFirst(hexSign ? 1 : 0)), by: 2).map { UInt8($0, radix: 16)! }
         let hexWords = chunk(hexBytes.reversed(), by: 8).map { $0.enumerated().map { UInt($1) << ($0 << 3) }.reduce(0, |).littleEndian }
-        self.init(words: hexWords, sign: hexSign)
+        self.init(storage: hexWords, sign: hexSign)
     }
     
     /// The number of bits in a single one of our digits, e.g. the bit width of
@@ -179,38 +193,20 @@ extension ArbitraryInt {
     /// The radix base `b` of our digits; e.g. `1 << radixBitWidth`.
     internal static var radix: ArbitraryInt = .one << Self.radixBitWidth
  
-    /// An internal utility initializer not suitable for general use which sets
-    /// up a value given an existing array of base-2**64 "digits". Specialized
-    /// for when the input array is already of the correct type.
-    internal init(words: Words, sign: Bool) {
-        precondition(!words.isEmpty)
-        precondition(words.count == 1 || words.last! != 0)
-        self.init(words: words, sign: sign, bitWidth: Self.bitWidthAsTotalWordBitsMinusLeadingZeroes(of: words))
+    /// Convenience subscript overloads for the individual digits in the
+    /// `storage` array. Permits fine control over bounds checking and
+    /// defaulted values.
+    internal subscript(i: Storage.Index) -> Storage.Element { get { storage[i] } set { storage[i] = newValue } } // direct forward
+    internal subscript<R: RangeExpression>(r: R) -> Storage.SubSequence where R.Bound == Storage.Index { storage[r] } // direct forward
+    internal subscript(infinite i: Storage.Index) -> Storage.Element { i >= storage.endIndex ? 0 : storage[i] } // implicit pad on right to `Index.max`
+    internal subscript(infinite r: PartialRangeFrom<Storage.Index>) -> FlattenSequence<[AnySequence<Storage.Element>]> { // implicit pad on right to infinity
+        [AnySequence(storage[r]), AnySequence(sequence(first: 0, next: { _ in 0 }))].joined()
     }
-
-    /// An internal utility initializer not suitable for general use which sets
-    /// up a value given an existing array of base-2**64 "digits".
-    internal init<C>(words: C, sign: Bool)  where C: BidirectionalCollection, C.Element == Words.Element {
-        self.init(words: Words(words), sign: sign)
-    }
-    
-    /// Convenience subscript overloads for the individual words in the `words`
-    /// array. Permits fine control over bounds checking and defaulted values.
-    internal subscript(i: Words.Index) -> Words.Element { get { words[i] } set { words[i] = newValue } } // direct forward
-    internal subscript<R: RangeExpression>(r: R) -> Words.SubSequence where R.Bound == Words.Index { words[r] } // direct forward
-    internal subscript(infinite i: Words.Index) -> Words.Element { i >= words.endIndex ? 0 : words[i] } // implicit pad on right to `Index.max`
-    internal subscript(infinite r: PartialRangeFrom<Words.Index>) -> FlattenSequence<[AnySequence<Words.Element>]> { // implicit pad on right to infinity
-        [AnySequence(words[r]), AnySequence(sequence(first: 0, next: { _ in 0 }))].joined()
-    }
-    internal subscript(ghosting i: Words.Index) -> Words.Element { i >= words.startIndex ? words[i] : 0 } // implicit pad on left to `Index.min`
-    internal subscript<R: BoundedRangeExpression>(ghosting r: R) -> FlattenSequence<[AnySequence<Words.Element>]> where R.Bound == Words.Index { // implicit pad on left to `r.lowerBound`
-        [.init(repeatElement(0, count: Swift.max(words.startIndex - r.lowerBound, 0))), .init(words[r.clamped(to: .init(words.startIndex..<(.max)))])].joined()
-    }
-    internal subscript(unsafe i: Words.Index) -> Words.Element { words.indices.contains(i) ? words[i] : 0 } // zero for ANY out of bounds index, use with care
-    internal subscript<R: BoundedRangeExpression>(unsafe r: R) -> FlattenSequence<[AnySequence<Words.Element>]> where R.Bound == Words.Index { // pads out of bound edges with zeroes on both sides, use with care
-        [AnySequence(repeatElement(0, count: Swift.max(words.startIndex - r.lowerBound, 0))),
-            AnySequence(words[r.relative(to: words).clamped(to: words.startIndex..<words.endIndex)]),
-        AnySequence(repeatElement(0, count: Swift.max(r.upperBound - words.endIndex - 1, 0)))].joined()
+    internal subscript(unsafe i: Storage.Index) -> Storage.Element { storage.indices.contains(i) ? storage[i] : 0 } // zero for ANY out of bounds index, use with care
+    internal subscript<R: BoundedRangeExpression>(unsafe r: R) -> FlattenSequence<[AnySequence<Storage.Element>]> where R.Bound == Storage.Index { // pads out of bound edges with zeroes on both sides, use with care
+        [AnySequence(repeatElement(0, count: Swift.max(storage.startIndex - r.lowerBound, 0))),
+            AnySequence(storage[r.relative(to: storage).clamped(to: storage.startIndex..<storage.endIndex)]),
+        AnySequence(repeatElement(0, count: Swift.max(r.upperBound - storage.endIndex - 1, 0)))].joined()
     }
     
     /// Common implementation for / and %. Override the stdlib implementation
@@ -224,14 +220,14 @@ extension ArbitraryInt {
         
         if self.bitWidth <= Self.radixBitWidth && rhs.bitWidth <= (Self.radixBitWidth << 1) {
             let (q, r) = rhs[0].dividingFullWidth((high: self[infinite: 1], low: self[0]))
-            return (quotient: ArbitraryInt(words: [q], sign: self.sign != rhs.sign && q != 0), remainder: ArbitraryInt(words: [r], sign: self.sign && r != 0))
+            return (quotient: ArbitraryInt(storage: [q], sign: self.sign != rhs.sign && q != 0), remainder: ArbitraryInt(storage: [r], sign: self.sign && r != 0))
         }
         
         var x = self.magnitude, y = rhs.magnitude
-        let λ = Swift.max(y.words.last!.leadingZeroBitCount - 1, 0)
+        let λ = Swift.max(y.storage.last!.leadingZeroBitCount - 1, 0)
         (x, y) = (x << λ, y << λ) // normalize
-        let n = x.words.endIndex - 1, t = y.words.endIndex - 1
-        var q = Words(repeating: 0, count: n - t + 1)
+        let n = x.storage.endIndex - 1, t = y.storage.endIndex - 1
+        var q = Storage(repeating: 0, count: n - t + 1)
         let ybnt = (y << ((n - t) << Self.radixBitShift))
         
         debug(.Quot, state: ["λ": λ, "n": n, "t": t])
@@ -253,8 +249,8 @@ extension ArbitraryInt {
                 q[j] = res.quotient.magnitude
                 debug(.Quot, state: ["x[i-1...i]/y[t]": "\(res.quotient.hexEncodedString()) REM \(res.remainder.hexEncodedString())", "q[j]": q[j].hexEncodedString()])
             }
-            let y2 = ArbitraryInt(words: Array(y[unsafe: (t - 1)...t]).normalized(), sign: false)
-            let x3 = ArbitraryInt(words: Array(x[unsafe: (i - 2)...i]).normalized(), sign: false)
+            let y2 = ArbitraryInt(storage: Array(y[unsafe: (t - 1)...t]).normalized(), sign: false)
+            let x3 = ArbitraryInt(storage: Array(x[unsafe: (i - 2)...i]).normalized(), sign: false)
             debug(.Quot, state: ["y2=y[t-1...t]": y2, "x3=x[i-2...i]": x3])
             while ArbitraryInt(q[j]) * y2 > x3 {
                 q[j] -= 1
@@ -270,10 +266,10 @@ extension ArbitraryInt {
             }
         }
         let λr = x, r = λr >> λ
-        let qq = ArbitraryInt(words: q.normalized(), sign: self.sign != rhs.sign && q.normalized() != [0])
+        let qq = ArbitraryInt(storage: q.normalized(), sign: self.sign != rhs.sign && q.normalized() != [0])
         debug(.Quot, state: ["λr": λr, "r": r, "q": q.hexEncodedString()])
-        debug(.Quot, state: ["quotient": qq, "remainder": ArbitraryInt(words: r.words, sign: self.sign)])
-        return (quotient: qq, remainder: ArbitraryInt(words: r.words, sign: self.sign))
+        debug(.Quot, state: ["quotient": qq, "remainder": ArbitraryInt(storage: r.storage, sign: self.sign)])
+        return (quotient: qq, remainder: ArbitraryInt(storage: r.storage, sign: self.sign))
     }
     
     /// Both division and modulo forward to `quotientAndRemainder()`.
@@ -327,24 +323,24 @@ extension ArbitraryInt {
         guard rhs != .one else { return lhs } // identity property
         guard lhs != .minusOne else { return -rhs } // negative identity = unary negation
         guard rhs != .minusOne else { return -lhs } // negative identity = unary negation
-        assert(lhs.words.count < UInt(Int.max) && rhs.words.count < UInt(Int.max))
+        assert(lhs.storage.count < UInt(Int.max) && rhs.storage.count < UInt(Int.max))
         
-        let n = lhs.words.endIndex, t = rhs.words.endIndex
-        var w = Words(repeating: 0, count: n + t), v = Words.Element(0)
+        let n = lhs.storage.endIndex, t = rhs.storage.endIndex
+        var w = Storage(repeating: 0, count: n + t), v = Storage.Element(0)
         var carry1 = false, carry2 = false
         
         lhs.debug(.Prod, state: ["n": n, "t": t])
         for i in 0..<t {
             for j in 0..<n {
                 (w[i &+ j], carry2) = w[i &+ j].addingReportingOverflow(w[i &+ n])
-                (w[i &+ n], v) = lhs.words[j].multipliedFullWidth(by: rhs.words[i])
+                (w[i &+ n], v) = lhs.storage[j].multipliedFullWidth(by: rhs.storage[i])
                 (w[i &+ j], carry1) = w[i &+ j].addingReportingOverflow(v)
                 w[i &+ n] &+= (carry1 ? 1 : 0) &+ (carry2 ? 1 : 0)
             }
             lhs.debug(.Prod, state: ["i": i, "w": w.hexEncodedString()])
         }
         while w.last == 0 { w.removeLast() }
-        let product = ArbitraryInt(words: w, sign: lhs.sign != rhs.sign)
+        let product = ArbitraryInt(storage: w, sign: lhs.sign != rhs.sign)
         lhs.debug(.Prod, state: ["product": product])
         return product
     }
@@ -367,7 +363,7 @@ extension ArbitraryInt {
         // -2 - -5 -> (-2 + 5), -5 - -2 -> -(-2 - -5) -> -(-2 + 5)
         // Therefore subtraction per below may always assume positive numbers and last-place borrowing.
 
-        var n = lhs.words.count, result = Words(repeating: 0, count: n), borrow = Words.Element.zero
+        var n = lhs.storage.count, result = Storage(repeating: 0, count: n), borrow = Storage.Element.zero
         
         // Subtract each group of bits in sequence with propagated borrow.
         for i in 0..<n {
@@ -377,10 +373,10 @@ extension ArbitraryInt {
         }
         // Given rhs < lhs (already checked), taking a borrow out of the last word is illegal.
         assert(borrow == .zero)
-        // Drop all trailing zero words of the results array, making sure to leave at least one.
+        // Drop all trailing zero digits of the results array, making sure to leave at least one.
         while result.count > 1 && result.last == .zero { result.removeLast() }
         // Return result as `ArbitraryInt`
-        let difference = ArbitraryInt(words: result, sign: false)
+        let difference = ArbitraryInt(storage: result, sign: false)
         difference.debug(.Diff, state: ["difference": difference])
         return difference
     }
@@ -397,16 +393,16 @@ extension ArbitraryInt {
         if rhs.sign { return lhs - (-rhs) } // rewrite a + -b as a - b;  5 + -2 -> 5 - 2, 5 + -7 -> 5 - 7 -> -(7 - 5)
 
         // If we get here both operands are positive
-        let n = lhs.words.endIndex, t = rhs.words.endIndex, z = Swift.max(n, t)
-        var result = Words(repeating: 0, count: z), carry = Words.Element.zero
+        let n = lhs.storage.endIndex, t = rhs.storage.endIndex, z = Swift.max(n, t)
+        var result = Storage(repeating: 0, count: z), carry = Storage.Element.zero
         
         lhs.debug(.Sum, state: ["n": n, "t": t, "z": z])
         for i in 0..<z { (carry, result[i]) = lhs[infinite: i].addedPreservingCarry(to: rhs[infinite: i], carryin: carry) }
         lhs.debug(.Sum, state: ["result[0..<z]": result.hexEncodedString(), "carry": carry])
         if carry != .zero { result.append(carry) }
         assert(result.normalized() == result)
-        lhs.debug(.Sum, state: ["sum": ArbitraryInt(words: result, sign: false)])
-        return ArbitraryInt(words: result, sign: false)
+        lhs.debug(.Sum, state: ["sum": ArbitraryInt(storage: result, sign: false)])
+        return ArbitraryInt(storage: result, sign: false)
     }
     /// The same algorithm as the three-operand form above, but tries even
     /// harder to avoid allocations and copying.
@@ -418,21 +414,22 @@ extension ArbitraryInt {
         if rhs.sign { lhs -= (-rhs); return } // rewrite a + -b as a - b;  5 + -2 -> 5 - 2, 5 + -7 -> 5 - 7 -> -(7 - 5)
 
         // If we get here both operands are positive
-        let n = lhs.words.endIndex, t = rhs.words.endIndex, z = Swift.max(n, t)
-        var carry = Words.Element.zero
+        let n = lhs.storage.endIndex, t = rhs.storage.endIndex, z = Swift.max(n, t)
+        var carry = Storage.Element.zero
         
         lhs.debug(.Sum, state: ["n": n, "t": t, "z": z], "inplace!")
-        lhs.words.append(contentsOf: Array(repeating: Words.Element.zero, count: Swift.max(t - n, 0)))
+        lhs.storage.append(contentsOf: Array(repeating: Storage.Element.zero, count: Swift.max(t - n, 0)))
         for i in 0..<z { (carry, lhs[i]) = lhs[i].addedPreservingCarry(to: rhs[infinite: i], carryin: carry) }
-        if carry != .zero { lhs.words.append(carry) }
-        lhs.debug(.Sum, state: ["lhs[0..<n+t]": lhs.words.hexEncodedString(), "carry": carry], "inplace!")
-        lhs.bitWidth = lhs.bitWidthAsTotalWordBitsMinusLeadingZeroes()
+        if carry != .zero { lhs.storage.append(carry) }
+        lhs.debug(.Sum, state: ["lhs[0..<n+t]": lhs.storage.hexEncodedString(), "carry": carry], "inplace!")
         lhs.debug(.Sum, state: ["sum": lhs], "inplace!")
     }
     
-    /// `Equatable`. Bit width, words by bitwise compare, and sign must match.
+    /// `Equatable`. Digits by bitwise compare, and sign must match. (Checking
+    /// bit width requires extra work querying the storage array which just
+    /// slows things down versus equating it.)
     public static func == (lhs: ArbitraryInt, rhs: ArbitraryInt) -> Bool {
-        return lhs.bitWidth == rhs.bitWidth && lhs.words == rhs.words && lhs.sign == rhs.sign
+        return lhs.storage == rhs.storage && lhs.sign == rhs.sign
     }
     
     /// Comparison operator. Noticeably faster than the default implementation
@@ -440,14 +437,13 @@ extension ArbitraryInt {
     public static func < (lhs: ArbitraryInt, rhs: ArbitraryInt) -> Bool {
         if lhs.sign && rhs.sign { return -rhs > -lhs } // if both negative, flip the compare
         if lhs.sign != rhs.sign { return lhs.sign } // if only one negative, the negative one is smaller
-
-        if lhs.bitWidth < rhs.bitWidth { return true }
-        if lhs.bitWidth > rhs.bitWidth || lhs == rhs { return false }
-        for (lhsWord, rhsWord) in zip(lhs.words, rhs.words).reversed() {
-            if lhsWord < rhsWord { return true }
-            else if lhsWord > rhsWord { return false }
+        if rhs.storage.count > lhs.storage.count { return true }
+        if lhs.storage.count > rhs.storage.count { return false }
+        
+        for i in lhs.storage.indices.reversed() {
+            if lhs.storage[i] != rhs.storage[i] { return lhs.storage[i] < rhs.storage[i] }
         }
-        fatalError() // if we get here, the == operator is broken
+        return false // they were equal, which means not less than
     }
     
     /// Shift the entire value of `lhs` left by `rhs` bits, zero-filling from
@@ -462,42 +458,39 @@ extension ArbitraryInt {
     /// specified by `rhs` would cause growth of the original value by more than
     /// four orders of magnitude. Whether the shifted value is negative is
     /// _ignored_; bit shifting has the effect of multiplying by two, which is
-    /// the same operation on our unsigned storage words regardless. Shifting by
-    /// a negative value is equivalent to shifting the absolute of that value in
+    /// the same operation on our unsigned storage regardless. Shifting by a
+    /// negative value is equivalent to shifting the absolute of that value in
     /// the other direction, apparently.
     public static func <<= <RHS>(lhs: inout ArbitraryInt, rhs: RHS) where RHS: BinaryInteger {
         lhs.debug(.LShift, state: ["x": lhs, "y": rhs])
         guard rhs >= .zero else { lhs >>= rhs.magnitude; return }
         guard rhs > .zero, lhs != .zero else { return } // shifting a zero bit count or shifting a lot of zeroes does nothing
         precondition(rhs < (lhs.bitWidth << 50), "Asked to shift an absurd number of bits into an arbitrary-precision value.")
-        let (wholeWordsShifted, remainderBits) = (Int(exactly: rhs)! >> radixBitShift, Int(exactly: rhs)! & (radixBitWidth - 1))
+        let (wholeDigitsShifted, remainderBits) = (Int(exactly: rhs)! >> radixBitShift, Int(exactly: rhs)! & (radixBitWidth - 1))
         
-        // Insert n / Words.Element.bitSize words at the start. Saves cascading potentially hundreds of bytes of data
-        // and ensures the cascade logic never has to deal with more than one word's worth of bits at a time.
-        lhs.words.insert(contentsOf: Words(repeating: 0, count: wholeWordsShifted), at: lhs.words.startIndex)
-        lhs.debug(.LShift, state: ["whole": wholeWordsShifted, "remBits": remainderBits])
+        // Insert n / Storage.Element.bitSize digits at the start. Saves cascading potentially hundreds of bytes of data
+        // and ensures the cascade logic never has to deal with more than one digit's worth of bits at a time.
+        lhs.storage.insert(contentsOf: Storage(repeating: 0, count: wholeDigitsShifted), at: lhs.storage.startIndex)
+        lhs.debug(.LShift, state: ["whole": wholeDigitsShifted, "remBits": remainderBits])
         // If the remainder was zero, the shift count was an exact multiple of the word bit width, nothing to do!
         if remainderBits > 0 {
             // Make sure the last word has enough spare bits, add a new one if not. Only one extra is needed at most.
             // Note: Our bit width only counts to the last 1 bit, leading 0 bits are extra capacity.
-            if lhs.words.last!.leadingZeroBitCount < remainderBits { lhs.words.append(0) }
+            if lhs.storage.last!.leadingZeroBitCount < remainderBits { lhs.storage.append(0) }
             // Skip as many zeroes in our storage as possible, no need to cascade those. Round to the nearest word bounday.
             let startWordIdx = lhs.trailingZeroBitCount >> radixBitShift
-            assert(startWordIdx < lhs.words.count, "Check for lhs == 0 failed?")
+            assert(startWordIdx < lhs.storage.count, "Check for lhs == 0 failed?")
             // Go through each word, saving bits off the top and shifting bits in from the bottom. If we did it right,
             // we'll end with the scrach data containing the zeroes at the top of the last word.
-            var scratch = Words.Element(0) // scratch space for bits destined for the next word
-            for w in startWordIdx..<lhs.words.count {
+            var scratch = Storage.Element(0) // scratch space for bits destined for the next word
+            for w in startWordIdx..<lhs.storage.count {
                 // List/tuple assignments evaluate rvalue elements left to right, then assign lvalue elements left to right.
-                // Exactly equivalent to writing `let (newWord, save) = /*rvalue*/; lhs.words = newWord; scratch = save`.
+                // Exactly equivalent to writing `let (newWord, save) = /*rvalue*/; lhs.storage = newWord; scratch = save`.
                 // In the end only saves an extra `let`, but it looks kinda neat. Sorta.
                 (lhs[w], scratch) = ((lhs[w] << remainderBits) | scratch, lhs[w] >> (radixBitWidth - remainderBits))
             }
             assert(scratch == 0, "Data was left in scratch after left-shift bit cascading. Bad math?")
         }
-        // Update bit width by adding the total number of bits that got shifted in.
-        lhs.bitWidth += Int(rhs)
-        assert(lhs.bitWidth == lhs.bitWidthAsTotalWordBitsMinusLeadingZeroes(), "We did something wrong, counted bits isn't previous plus shifted")
         lhs.debug(.LShift, state: ["value": lhs])
     }
     
@@ -512,20 +505,17 @@ extension ArbitraryInt {
         guard rhs >= .zero else { lhs <<= rhs.magnitude; return }
         guard rhs > .zero, lhs != .zero else { return } // no point shifting by zero or shifting zeroes
         if rhs >= lhs.bitWidth { lhs = lhs.sign ? -1 : .zero; return } // if shifting all bits out, just reset to zero
-        let (wholeWordsDropped, bitsDropped) = (Int(exactly: rhs)! >> radixBitShift, Int(exactly: rhs)! & (radixBitWidth - 1))
-        // Drop entire words from the start of the words list. Much simpler and faster than shifting bits down.
-        lhs.words.removeFirst(wholeWordsDropped)
-        lhs.debug(.RShift, state: ["whole": wholeWordsDropped, "remBits": bitsDropped])
+        let (wholeDigitsDropped, bitsDropped) = (Int(exactly: rhs)! >> radixBitShift, Int(exactly: rhs)! & (radixBitWidth - 1))
+        // Drop entire digits from the start of the storage list. Much simpler and faster than shifting bits down.
+        lhs.storage.removeFirst(wholeDigitsDropped)
+        lhs.debug(.RShift, state: ["whole": wholeDigitsDropped, "remBits": bitsDropped])
         lhs[0] >>= bitsDropped // drop remaining bits from first word, leaves gap at top. If bitsDropped == 0, this is wasteful but harmless
-        for w in 1..<lhs.words.count { // repeat for each word, pulling bits from further up and pasting them into the empty area
+        for w in 1..<lhs.storage.count { // repeat for each word, pulling bits from further up and pasting them into the empty area
             lhs[w - 1] |= (lhs[w] & (1 << bitsDropped - 1)) << (radixBitWidth - bitsDropped)
             lhs[w] >>= bitsDropped
         }
-        // Update bit width
-        lhs.bitWidth -= Int(rhs)
         // Drop all trailing zeroes, leaving at least one word in the result.
-        while lhs.words.count > 1 && lhs.words.last == .zero { lhs.words.removeLast() }
-        assert(lhs.bitWidth == lhs.bitWidthAsTotalWordBitsMinusLeadingZeroes(), "We did something wrong, counted bits isn't bits minus shifted")
+        while lhs.storage.count > 1 && lhs.storage.last == .zero { lhs.storage.removeLast() }
         lhs.debug(.RShift, state: ["value": lhs])
     }
 
@@ -548,8 +538,7 @@ extension ArbitraryInt {
     /// magnitude of the result is zero; "negative zero" is not a valid
     /// representation.
     public static func &= (lhs: inout ArbitraryInt, rhs: ArbitraryInt) {
-        lhs.words = (0..<Swift.max(lhs.words.count, rhs.words.count)).map { lhs[infinite: $0] & rhs[infinite: $0] }.normalized()
-        lhs.bitWidth = lhs.bitWidthAsTotalWordBitsMinusLeadingZeroes()
+        lhs.storage = (0..<Swift.max(lhs.storage.count, rhs.storage.count)).map { lhs[infinite: $0] & rhs[infinite: $0] }.normalized()
         lhs.sign = lhs.sign && rhs.sign && lhs != .zero
     }
 
@@ -564,8 +553,7 @@ extension ArbitraryInt {
     /// magnitude of the result is zero; "negative zero" is not a valid
     /// representation.
     public static func |= (lhs: inout ArbitraryInt, rhs: ArbitraryInt) {
-        lhs.words = (0..<Swift.max(lhs.words.count, rhs.words.count)).map { lhs[infinite: $0] | rhs[infinite: $0] }.normalized()
-        lhs.bitWidth = lhs.bitWidthAsTotalWordBitsMinusLeadingZeroes()
+        lhs.storage = (0..<Swift.max(lhs.storage.count, rhs.storage.count)).map { lhs[infinite: $0] | rhs[infinite: $0] }.normalized()
         lhs.sign = (lhs.sign || rhs.sign) && lhs != .zero
     }
     
@@ -580,8 +568,7 @@ extension ArbitraryInt {
     /// magnitude of the result is zero; "negative zero" is not a valid
     /// representation.
     public static func ^= (lhs: inout ArbitraryInt, rhs: ArbitraryInt) {
-        lhs.words = (0..<Swift.max(lhs.words.count, rhs.words.count)).map { lhs[infinite: $0] ^ rhs[infinite: $0] }.normalized()
-        lhs.bitWidth = lhs.bitWidthAsTotalWordBitsMinusLeadingZeroes()
+        lhs.storage = (0..<Swift.max(lhs.storage.count, rhs.storage.count)).map { lhs[infinite: $0] ^ rhs[infinite: $0] }.normalized()
         lhs.sign = (lhs.sign != rhs.sign) && lhs != .zero
     }
     
@@ -599,13 +586,13 @@ extension ArbitraryInt {
         debug(.GCD, state: ["u": u, "v": v, "A": 1, "B": 0, "C": 0, "D": 1])
         repeat {
             assert(u > .zero)
-            while u.words[0] & 0x1 == 0 {
+            while u.storage[0] & 0x1 == 0 {
                 u >>= 1
                 (A, B) = ((A + ((A & 0x1) == 0 && (B & 0x1) == 0 ? 0 : y)) >> 1, (B - ((A & 0x1) == 0 && (B & 0x1) == 0 ? 0 : x)) >> 1)
                 debug(.GCD, state: ["u": u, "A": A, "B": B], "u%2=0")
             }
             assert(v > .zero)
-            while v.words[0] & 0x1 == 0 {
+            while v.storage[0] & 0x1 == 0 {
                 v >>= 1
                 (C, D) = ((C + ((C & 0x1) == 0 && (D & 0x1) == 0 ? 0 : y)) >> 1, (D - ((C & 0x1) == 0 && (D & 0x1) == 0 ? 0 : x)) >> 1)
                 debug(.GCD, state: ["v": v, "C": C, "D": D], "v%2=0")
@@ -629,32 +616,6 @@ extension ArbitraryInt {
         return (self * rhs).magnitude / gcd_bin(rhs).v
     }
     
-    /// Calculate the total number of bits occupied by `self.words` (simple
-    /// multiply), and subtract the number of leading zero bits on the last word
-    /// in the list. There must always be at least one word. If the value of all
-    /// words is zero, the bit width is `1` (the 0 bit that represents the zero
-    /// value itself - 0 bits doesn't represent anything).
-    private func bitWidthAsTotalWordBitsMinusLeadingZeroes() -> Int {
-        let totalWordBits = self.words.count << Self.radixBitShift
-        let lastLeadingZeroBits = self.words.last!.leadingZeroBitCount
-        
-        // max(1, ...) ensures we never return zero.
-        return Swift.max(1, totalWordBits - lastLeadingZeroBits)
-    }
-
-    /// Calculate the total number of bits occupied by a given potential `words`
-    /// input (simple multiply), and subtract the number of leading zero bits on
-    /// the last word in the list. There must always be at least one word. If
-    /// the value of all words is zero, the bit width is `1` (the 0 bit that
-    /// represents the zero value itself - 0 bits doesn't represent anything).
-    private static func bitWidthAsTotalWordBitsMinusLeadingZeroes(of words: Words) -> Int {
-        let totalWordBits = words.count << Self.radixBitShift
-        let lastLeadingZeroBits = words.last!.leadingZeroBitCount
-        
-        // max(1, ...) ensures we never return zero.
-        return Swift.max(1, totalWordBits - lastLeadingZeroBits)
-    }
-
 }
 
 // MARK: - ArbitraryInt <-> BinaryInteger etc. operators

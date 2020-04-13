@@ -159,7 +159,7 @@ final class ArbitraryIntTests: XCTestCase {
 //            print("  Sum = \(vector.result.debugDescription)")
 //            print("  Out = \(sum.debugDescription)")
             XCTAssertEqual(sum, vector.result, file: vector.file, line: vector.line)
-            XCTAssertEqual(sum.words.hexEncodedString(), vector.result.words.hexEncodedString(), file: vector.file, line: vector.line)
+            XCTAssertEqual(sum.storage.hexEncodedString(), vector.result.storage.hexEncodedString(), file: vector.file, line: vector.line)
             XCTAssertEqual(sum.bitWidth, vector.result.bitWidth, file: vector.file, line: vector.line)
             XCTAssertEqual(sum.sign, vector.result.sign, file: vector.file, line: vector.line)
         }
@@ -174,7 +174,7 @@ final class ArbitraryIntTests: XCTestCase {
 //            print("  Sum = \(vector.result.debugDescription)")
 //            print("  Out = \(sum.debugDescription)")
             XCTAssertEqual(sum, vector.result, file: vector.file, line: vector.line)
-            XCTAssertEqual(sum.words.hexEncodedString(), vector.result.words.hexEncodedString(), file: vector.file, line: vector.line)
+            XCTAssertEqual(sum.storage.hexEncodedString(), vector.result.storage.hexEncodedString(), file: vector.file, line: vector.line)
             XCTAssertEqual(sum.bitWidth, vector.result.bitWidth, file: vector.file, line: vector.line)
             XCTAssertEqual(sum.sign, vector.result.sign, file: vector.file, line: vector.line)
         }
@@ -190,7 +190,7 @@ final class ArbitraryIntTests: XCTestCase {
 //            print("  Prd = \(vector.result.debugDescription)")
 //            print("  Out = \(product.debugDescription)")
             XCTAssertEqual(product, vector.result, file: vector.file, line: vector.line)
-            XCTAssertEqual(product.words.hexEncodedString(), vector.result.words.hexEncodedString(), file: vector.file, line: vector.line)
+            XCTAssertEqual(product.storage.hexEncodedString(), vector.result.storage.hexEncodedString(), file: vector.file, line: vector.line)
             XCTAssertEqual(product.bitWidth, vector.result.bitWidth, file: vector.file, line: vector.line)
             XCTAssertEqual(product.sign, vector.result.sign, file: vector.file, line: vector.line)
         }
@@ -208,11 +208,11 @@ final class ArbitraryIntTests: XCTestCase {
 //            print("  Out = \(quotient.debugDescription)")
 //            print("  ORm = \(remainder.debugDescription)")
             XCTAssertEqual(quotient, vector.result, file: vector.file, line: vector.line)
-            XCTAssertEqual(quotient.words.hexEncodedString(), vector.result.words.hexEncodedString(), file: vector.file, line: vector.line)
+            XCTAssertEqual(quotient.storage.hexEncodedString(), vector.result.storage.hexEncodedString(), file: vector.file, line: vector.line)
             XCTAssertEqual(quotient.bitWidth, vector.result.bitWidth, file: vector.file, line: vector.line)
             XCTAssertEqual(quotient.sign, vector.result.sign, file: vector.file, line: vector.line)
             XCTAssertEqual(remainder, vector.operands[2], file: vector.file, line: vector.line)
-            XCTAssertEqual(remainder.words.hexEncodedString(), vector.operands[2].words.hexEncodedString(), file: vector.file, line: vector.line)
+            XCTAssertEqual(remainder.storage.hexEncodedString(), vector.operands[2].storage.hexEncodedString(), file: vector.file, line: vector.line)
             XCTAssertEqual(remainder.bitWidth, vector.operands[2].bitWidth, file: vector.file, line: vector.line)
             XCTAssertEqual(remainder.sign, vector.operands[2].sign, file: vector.file, line: vector.line)
         }
@@ -233,7 +233,7 @@ final class ArbitraryIntTests: XCTestCase {
 //            print("  Mdp = \(vector.result.debugDescription)")
 //            print("  Out = \(modularProduct.debugDescription)")
             XCTAssertEqual(modularProduct, vector.result, file: vector.file, line: vector.line)
-            XCTAssertEqual(modularProduct.words.hexEncodedString(), vector.result.words.hexEncodedString(), file: vector.file, line: vector.line)
+            XCTAssertEqual(modularProduct.storage.hexEncodedString(), vector.result.storage.hexEncodedString(), file: vector.file, line: vector.line)
             XCTAssertEqual(modularProduct.bitWidth, vector.result.bitWidth, file: vector.file, line: vector.line)
             XCTAssertEqual(modularProduct.sign, vector.result.sign, file: vector.file, line: vector.line)
         }
@@ -250,7 +250,7 @@ final class ArbitraryIntTests: XCTestCase {
 //            print("  Mxp = \(vector.result.debugDescription)")
 //            print("  Out = \(modularExponential.debugDescription)")
             XCTAssertEqual(modularExponential, vector.result, file: vector.file, line: vector.line)
-            XCTAssertEqual(modularExponential.words.hexEncodedString(), vector.result.words.hexEncodedString(), file: vector.file, line: vector.line)
+            XCTAssertEqual(modularExponential.storage.hexEncodedString(), vector.result.storage.hexEncodedString(), file: vector.file, line: vector.line)
             XCTAssertEqual(modularExponential.bitWidth, vector.result.bitWidth, file: vector.file, line: vector.line)
             XCTAssertEqual(modularExponential.sign, vector.result.sign, file: vector.file, line: vector.line)
         }
@@ -266,7 +266,7 @@ final class ArbitraryIntTests: XCTestCase {
 //            print("  Exp = \(vector.result.debugDescription)")
 //            print("  Out = \(exponential.debugDescription)")
             XCTAssertEqual(exponential, vector.result, file: vector.file, line: vector.line)
-            XCTAssertEqual(exponential.words.hexEncodedString(), vector.result.words.hexEncodedString(), file: vector.file, line: vector.line)
+            XCTAssertEqual(exponential.storage.hexEncodedString(), vector.result.storage.hexEncodedString(), file: vector.file, line: vector.line)
             XCTAssertEqual(exponential.bitWidth, vector.result.bitWidth, file: vector.file, line: vector.line)
             XCTAssertEqual(exponential.sign, vector.result.sign, file: vector.file, line: vector.line)
         }
@@ -282,7 +282,7 @@ final class ArbitraryIntTests: XCTestCase {
 //            print("  Inv = \(vector.result.debugDescription)")
 //            print("  Out = \(modularInverse.debugDescription)")
             XCTAssertEqual(modularInverse, vector.result, file: vector.file, line: vector.line)
-            XCTAssertEqual(modularInverse.words.hexEncodedString(), vector.result.words.hexEncodedString(), file: vector.file, line: vector.line)
+            XCTAssertEqual(modularInverse.storage.hexEncodedString(), vector.result.storage.hexEncodedString(), file: vector.file, line: vector.line)
             XCTAssertEqual(modularInverse.bitWidth, vector.result.bitWidth, file: vector.file, line: vector.line)
             XCTAssertEqual(modularInverse.sign, vector.result.sign, file: vector.file, line: vector.line)
         }
@@ -301,11 +301,11 @@ final class ArbitraryIntTests: XCTestCase {
 //            print("  OGD = \(gcd.debugDescription)")
 //            print("  OLM = \(lcm.debugDescription)")
             XCTAssertEqual(gcd, vector.result, file: vector.file, line: vector.line)
-            XCTAssertEqual(gcd.words.hexEncodedString(), vector.result.words.hexEncodedString(), file: vector.file, line: vector.line)
+            XCTAssertEqual(gcd.storage.hexEncodedString(), vector.result.storage.hexEncodedString(), file: vector.file, line: vector.line)
             XCTAssertEqual(gcd.bitWidth, vector.result.bitWidth, file: vector.file, line: vector.line)
             XCTAssertEqual(gcd.sign, vector.result.sign, file: vector.file, line: vector.line)
             XCTAssertEqual(lcm, vector.operands[2], file: vector.file, line: vector.line)
-            XCTAssertEqual(lcm.words.hexEncodedString(), vector.operands[2].words.hexEncodedString(), file: vector.file, line: vector.line)
+            XCTAssertEqual(lcm.storage.hexEncodedString(), vector.operands[2].storage.hexEncodedString(), file: vector.file, line: vector.line)
             XCTAssertEqual(lcm.bitWidth, vector.operands[2].bitWidth, file: vector.file, line: vector.line)
             XCTAssertEqual(lcm.sign, vector.operands[2].sign, file: vector.file, line: vector.line)
         }
@@ -321,7 +321,7 @@ final class ArbitraryIntTests: XCTestCase {
 //            print("  Val = \(vector.result.debugDescription)")
 //            print("  Out = \(value.debugDescription)")
             XCTAssertEqual(value, vector.result, file: vector.file, line: vector.line)
-            XCTAssertEqual(value.words.hexEncodedString(), vector.result.words.hexEncodedString(), file: vector.file, line: vector.line)
+            XCTAssertEqual(value.storage.hexEncodedString(), vector.result.storage.hexEncodedString(), file: vector.file, line: vector.line)
             XCTAssertEqual(value.bitWidth, vector.result.bitWidth, file: vector.file, line: vector.line)
             XCTAssertEqual(value.sign, vector.result.sign, file: vector.file, line: vector.line)
         }
@@ -337,7 +337,7 @@ final class ArbitraryIntTests: XCTestCase {
 //            print("  Val = \(vector.result.debugDescription)")
 //            print("  Out = \(value.debugDescription)")
             XCTAssertEqual(value, vector.result, file: vector.file, line: vector.line)
-            XCTAssertEqual(value.words.hexEncodedString(), vector.result.words.hexEncodedString(), file: vector.file, line: vector.line)
+            XCTAssertEqual(value.storage.hexEncodedString(), vector.result.storage.hexEncodedString(), file: vector.file, line: vector.line)
             XCTAssertEqual(value.bitWidth, vector.result.bitWidth, file: vector.file, line: vector.line)
             XCTAssertEqual(value.sign, vector.result.sign, file: vector.file, line: vector.line)
         }
@@ -353,7 +353,7 @@ final class ArbitraryIntTests: XCTestCase {
 //            print("  Val = \(vector.result.debugDescription)")
 //            print("  Out = \(value.debugDescription)")
             XCTAssertEqual(value, vector.result, file: vector.file, line: vector.line)
-            XCTAssertEqual(value.words.hexEncodedString(), vector.result.words.hexEncodedString(), file: vector.file, line: vector.line)
+            XCTAssertEqual(value.storage.hexEncodedString(), vector.result.storage.hexEncodedString(), file: vector.file, line: vector.line)
             XCTAssertEqual(value.bitWidth, vector.result.bitWidth, file: vector.file, line: vector.line)
             XCTAssertEqual(value.sign, vector.result.sign, file: vector.file, line: vector.line)
         }
