@@ -182,17 +182,6 @@ extension ArbitraryInt {
         self.init(storage: hexWords, sign: hexSign)
     }
     
-    /// The number of bits in a single one of our digits, e.g. the bit width of
-    /// our radix `b`.
-    internal static var radixBitWidth: Int = Words.Element.bitWidth
-    
-    /// The logarithm base 2 of the `radixBitWidth`, useful for optimizing use
-    /// of the value via bit shifting.
-    internal static var radixBitShift: Int = Self.radixBitWidth.trailingZeroBitCount
-    
-    /// The radix base `b` of our digits; e.g. `1 << radixBitWidth`.
-    internal static var radix: ArbitraryInt = .one << Self.radixBitWidth
- 
     /// Convenience subscript overloads for the individual digits in the
     /// `storage` array. Permits fine control over bounds checking and
     /// defaulted values.
