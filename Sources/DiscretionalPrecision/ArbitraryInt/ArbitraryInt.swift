@@ -149,8 +149,6 @@ extension ArbitraryInt {
     /// Convenience subscript overloads for the individual digits in the
     /// `storage` array. Permits fine control over bounds checking and
     /// defaulted values.
-    internal subscript(i: Storage.Index) -> Storage.Element { get { storage[i] } set { storage[i] = newValue } } // direct forward
-    internal subscript<R: RangeExpression>(r: R) -> Storage.SubSequence where R.Bound == Storage.Index { storage[r] } // direct forward
     internal subscript(infinite i: Storage.Index) -> Storage.Element { i >= storage.endIndex ? 0 : storage[i] } // implicit pad on right to `Index.max`
     internal subscript(infinite r: PartialRangeFrom<Storage.Index>) -> FlattenSequence<[AnySequence<Storage.Element>]> { // implicit pad on right to infinity
         [AnySequence(storage[r]), AnySequence(sequence(first: 0, next: { _ in 0 }))].joined()
@@ -172,7 +170,7 @@ extension ArbitraryInt {
         guard rhs != .minusOne else { return (quotient: -self, remainder: .zero) } // negative identity; division by -1 is the unary negation operator
         
         if self.bitWidth <= Self.radixBitWidth && rhs.bitWidth <= (Self.radixBitWidth << 1) {
-            let (q, r) = rhs[0].dividingFullWidth((high: self[infinite: 1], low: self[0]))
+            let (q, r) = rhs.storage[0].dividingFullWidth((high: self[infinite: 1], low: self.storage[0]))
             return (quotient: ArbitraryInt(storage: [q], sign: self.sign != rhs.sign && q != 0), remainder: ArbitraryInt(storage: [r], sign: self.sign && r != 0))
         }
         
@@ -194,11 +192,11 @@ extension ArbitraryInt {
             let j = i - t - 1
             debug(.Quot, state: ["i": i, "j": j])
             
-            if x[infinite: i] == y[t] {
+            if x[infinite: i] == y.storage[t] {
                 q[j] = .max
-                debug(.Quot, state: ["x[i]": x[infinite: i].hexEncodedString(), "y[t]": y[t].hexEncodedString(), "q[j]": q[j].hexEncodedString()], "x[i] == y[t]")
+                debug(.Quot, state: ["x[i]": x[infinite: i].hexEncodedString(), "y[t]": y.storage[t].hexEncodedString(), "q[j]": q[j].hexEncodedString()], "x[i] == y[t]")
             } else {
-                let res = y[t].dividingFullWidth((high: x[unsafe: i], low: x[unsafe: i - 1]))
+                let res = y.storage[t].dividingFullWidth((high: x[unsafe: i], low: x[unsafe: i - 1]))
                 q[j] = res.quotient.magnitude
                 debug(.Quot, state: ["x[i-1...i]/y[t]": "\(res.quotient.hexEncodedString()) REM \(res.remainder.hexEncodedString())", "q[j]": q[j].hexEncodedString()])
             }
@@ -320,8 +318,8 @@ extension ArbitraryInt {
         
         // Subtract each group of bits in sequence with propagated borrow.
         for i in 0..<n {
-            lhs.debug(.Diff, state: ["lWord": lhs[i].hexEncodedString(), "rWord": rhs[infinite: i].hexEncodedString(), "borrow": borrow])
-            (borrow, result[i]) = rhs[infinite: i].subtractingPreservingCarry(from: lhs[i], carryin: borrow)
+            lhs.debug(.Diff, state: ["lWord": lhs.storage[i].hexEncodedString(), "rWord": rhs[infinite: i].hexEncodedString(), "borrow": borrow])
+            (borrow, result[i]) = rhs[infinite: i].subtractingPreservingCarry(from: lhs.storage[i], carryin: borrow)
             lhs.debug(.Diff, state: ["lWord - rWord": result[i].hexEncodedString(), "borrow": borrow])
         }
         // Given rhs < lhs (already checked), taking a borrow out of the last word is illegal.
@@ -372,7 +370,7 @@ extension ArbitraryInt {
         
         lhs.debug(.Sum, state: ["n": n, "t": t, "z": z], "inplace!")
         lhs.storage.append(contentsOf: Array(repeating: Storage.Element.zero, count: Swift.max(t - n, 0)))
-        for i in 0..<z { (carry, lhs[i]) = lhs[i].addedPreservingCarry(to: rhs[infinite: i], carryin: carry) }
+        for i in 0..<z { (carry, lhs.storage[i]) = lhs.storage[i].addedPreservingCarry(to: rhs[infinite: i], carryin: carry) }
         if carry != .zero { lhs.storage.append(carry) }
         lhs.debug(.Sum, state: ["lhs[0..<n+t]": lhs.storage.hexEncodedString(), "carry": carry], "inplace!")
         lhs.debug(.Sum, state: ["sum": lhs], "inplace!")
@@ -440,7 +438,7 @@ extension ArbitraryInt {
                 // List/tuple assignments evaluate rvalue elements left to right, then assign lvalue elements left to right.
                 // Exactly equivalent to writing `let (newWord, save) = /*rvalue*/; lhs.storage = newWord; scratch = save`.
                 // In the end only saves an extra `let`, but it looks kinda neat. Sorta.
-                (lhs[w], scratch) = ((lhs[w] << remainderBits) | scratch, lhs[w] >> (radixBitWidth - remainderBits))
+                (lhs.storage[w], scratch) = ((lhs.storage[w] << remainderBits) | scratch, lhs.storage[w] >> (radixBitWidth - remainderBits))
             }
             assert(scratch == 0, "Data was left in scratch after left-shift bit cascading. Bad math?")
         }
@@ -462,10 +460,10 @@ extension ArbitraryInt {
         // Drop entire digits from the start of the storage list. Much simpler and faster than shifting bits down.
         lhs.storage.removeFirst(wholeDigitsDropped)
         lhs.debug(.RShift, state: ["whole": wholeDigitsDropped, "remBits": bitsDropped])
-        lhs[0] >>= bitsDropped // drop remaining bits from first word, leaves gap at top. If bitsDropped == 0, this is wasteful but harmless
+        lhs.storage[0] >>= bitsDropped // drop remaining bits from first word, leaves gap at top. If bitsDropped == 0, this is wasteful but harmless
         for w in 1..<lhs.storage.count { // repeat for each word, pulling bits from further up and pasting them into the empty area
-            lhs[w - 1] |= (lhs[w] & (1 << bitsDropped - 1)) << (radixBitWidth - bitsDropped)
-            lhs[w] >>= bitsDropped
+            lhs.storage[w - 1] |= (lhs.storage[w] & (1 << bitsDropped - 1)) << (radixBitWidth - bitsDropped)
+            lhs.storage[w] >>= bitsDropped
         }
         // Drop all trailing zeroes, leaving at least one word in the result.
         while lhs.storage.count > 1 && lhs.storage.last == .zero { lhs.storage.removeLast() }
