@@ -24,7 +24,7 @@ final class ArbitraryIntTests: XCTestCase {
         for (_, vector) in addVectors.enumerated() {
             let sum = vector.operands[0] + vector.operands[1]
             
-//            print("Vector \(i)/\(addVectors.count):")
+//            print("Vector \(i + 1)/\(addVectors.count):")
 //            print("  A   = \(vector.operands[0].debugDescription)")
 //            print("  B   = \(vector.operands[1].debugDescription)")
 //            print("  Sum = \(vector.result.debugDescription)")
@@ -37,7 +37,7 @@ final class ArbitraryIntTests: XCTestCase {
         for (_, vector) in productVectors.enumerated() {
             let product = vector.operands[0] * vector.operands[1]
             
-//            print("Vector \(i)/\(productVectors.count):")
+//            print("Vector \(i + 1)/\(productVectors.count):")
 //            print("  A   = \(vector.operands[0].debugDescription)")
 //            print("  B   = \(vector.operands[1].debugDescription)")
 //            print("  Prd = \(vector.result.debugDescription)")
@@ -50,7 +50,7 @@ final class ArbitraryIntTests: XCTestCase {
         for (_, vector) in quotientVectors.enumerated() {
             let (quotient, remainder) = vector.operands[0].quotientAndRemainder(dividingBy: vector.operands[1])
             
-//            print("Vector \(i)/\(quotientVectors.count):")
+//            print("Vector \(i + 1)/\(quotientVectors.count):")
 //            print("  A   = \(vector.operands[0].debugDescription)")
 //            print("  B   = \(vector.operands[1].debugDescription)")
 //            print("  Quo = \(vector.operands[2].debugDescription)")
@@ -66,7 +66,7 @@ final class ArbitraryIntTests: XCTestCase {
         for (_, vector) in modMulVectors.enumerated() {
             let modularProduct = vector.operands[0].product(multipliedBy: vector.operands[1], modulo: vector.operands[2])
             
-//            print("Vector \(i)/\(modMulVectors.count):")
+//            print("Vector \(i + 1)/\(modMulVectors.count):")
 //            print("  A   = \(vector.operands[0].debugDescription)")
 //            print("  B   = \(vector.operands[1].debugDescription)")
 //            print("  M   = \(vector.operands[2].debugDescription)")
@@ -80,7 +80,7 @@ final class ArbitraryIntTests: XCTestCase {
         for (_, vector) in modExpVectors.enumerated() {
             let modularExponential = vector.operands[0].raised(to: vector.operands[1], modulo: vector.operands[2])
             
-//            print("Vector \(i)/\(modExpVectors.count):")
+//            print("Vector \(i + 1)/\(modExpVectors.count):")
 //            print("  A   = \(vector.operands[0].debugDescription)")
 //            print("  E   = \(vector.operands[1].debugDescription)")
 //            print("  M   = \(vector.operands[2].debugDescription)")
@@ -94,7 +94,7 @@ final class ArbitraryIntTests: XCTestCase {
         for (_, vector) in expVectors.enumerated() {
             let exponential: ArbitraryInt = vector.operands[0] ↑ vector.operands[1]
             
-//            print("Vector \(i)/\(expVectors.count):")
+//            print("Vector \(i + 1)/\(expVectors.count):")
 //            print("  A   = \(vector.operands[0].debugDescription)")
 //            print("  E   = \(vector.operands[1].debugDescription)")
 //            print("  Exp = \(vector.result.debugDescription)")
@@ -107,7 +107,7 @@ final class ArbitraryIntTests: XCTestCase {
         for (_, vector) in modInvVectors.enumerated() {
             let modularInverse = vector.operands[0].inverse(modulo: vector.operands[1]) ?? .zero
             
-//            print("Vector \(i)/\(modInvVectors.count):")
+//            print("Vector \(i + 1)/\(modInvVectors.count):")
 //            print("  A   = \(vector.operands[0].debugDescription)")
 //            print("  M   = \(vector.operands[1].debugDescription)")
 //            print("  Inv = \(vector.result.debugDescription)")
@@ -121,7 +121,7 @@ final class ArbitraryIntTests: XCTestCase {
             let gcd = vector.operands[0].gcd_bin(vector.operands[1]).v
             let lcm = vector.operands[0].lcm(vector.operands[1])
             
-//            print("Vector \(i)/\(gcdVectors.count):")
+//            print("Vector \(i + 1)/\(gcdVectors.count):")
 //            print("  A   = \(vector.operands[0].debugDescription)")
 //            print("  B   = \(vector.operands[1].debugDescription)")
 //            print("  GCD = \(vector.result.debugDescription)")
@@ -137,7 +137,7 @@ final class ArbitraryIntTests: XCTestCase {
         for (_, vector) in lShift1Vectors.enumerated() {
             let value = vector.operands[0] << 1
             
-//            print("Vector \(i)/\(lShift1Vectors.count):")
+//            print("Vector \(i + 1)/\(lShift1Vectors.count):")
 //            print("  A   = \(vector.operands[0].debugDescription)")
 //            print("  B   = \(vector.operands[1].debugDescription)")
 //            print("  Val = \(vector.result.debugDescription)")
@@ -150,7 +150,7 @@ final class ArbitraryIntTests: XCTestCase {
         for (_, vector) in lShiftVectors.enumerated() {
             let value = vector.operands[0] << vector.operands[1]
             
-//            print("Vector \(i)/\(lShiftVectors.count):")
+//            print("Vector \(i + 1)/\(lShiftVectors.count):")
 //            print("  A   = \(vector.operands[0].debugDescription)")
 //            print("  B   = \(vector.operands[1].debugDescription)")
 //            print("  Val = \(vector.result.debugDescription)")
@@ -163,7 +163,7 @@ final class ArbitraryIntTests: XCTestCase {
         for (_, vector) in rShiftVectors.enumerated() {
             let value = vector.operands[0] >> vector.operands[1]
             
-//            print("Vector \(i)/\(rShiftVectors.count):")
+//            print("Vector \(i + 1)/\(rShiftVectors.count):")
 //            print("  A   = \(vector.operands[0].debugDescription)")
 //            print("  B   = \(vector.operands[1].debugDescription)")
 //            print("  Val = \(vector.result.debugDescription)")
