@@ -9,9 +9,9 @@
 /// We explicitly are _not_ a `FixedWidthInteger` type; our `bitWidth` is not
 /// constant between all instances or even within one instance.
 ///
-/// Surprisingly, `Comparable` is not in the list. It seems that its presence is
-/// more or less implicit on numeric types, and that the comparison operators
-/// work regardless, whether you implement them type-specificallly or not.
+/// This author was surprised to find `Comparable` not on the list, but was
+/// forced to sheepishly correct this comment when it was pointed out to her
+/// that `Strideable` refines `Comparable`.
 public struct ArbitraryInt {
     
     /// Typealias for our internal storage, which does _not_ conform to the
