@@ -100,8 +100,11 @@ extension ArbitraryInt: SignedInteger {
     
     // MARK: - Initializers
     
-    /// For any integral value of arbitrary size, make ourselves that size and
-    /// copy the raw value directly. (Are there endianness concerns here?)
+    /// For any integral value of arbitrary size, convert to sign-magnitude
+    /// representation by taking the words of the magnitude and copying the
+    /// sign. Optimize for the case where `T` is already an `ArbitraryInt`,
+    /// which happens often in generic context and can impose severe speed
+    /// penalties if not handled explicitly.
     @inlinable public init<T>(_ source: T) where T: BinaryInteger {
         if T.self is Self.Type {
             self = unsafeBitCast(source, to: Self.self)
@@ -131,11 +134,19 @@ extension ArbitraryInt: SignedInteger {
     /// Convert floating-point value of arbitrary bit width by rotating the
     /// significand left by the number of bits counted by the unbiased exponent.
     /// This yields the effective bit width of the significand. The input is
-    /// assumed to be `.isNormal`. 2**exponent is added to the result to un-hide
-    /// the 53rd significand bit. Refuses values whose rounded absolute value is
-    /// not exactly equal to the original value.
+    /// required to be `.isNormal`. 2**exponent is added to the result to
+    /// un-hide the 53rd significand bit. Refuses values whose rounded absolute
+    /// value is not exactly equal to the original value.
+    ///
+    /// - Note: The intent of doing the conversion from IEEE 754 representation
+    ///   in this manual fashion rather than letting the runtime handle it is to
+    ///   keep as many digits of integer precision contained in the original
+    ///   value as possible, as this could theoretically be more digits than
+    ///   would be retained by a typical integer conversion. If this assumption
+    ///   is incorrect, this should be replaced with `self.init(Int(source))`.
     public init?<T>(exactly source: T) where T : BinaryFloatingPoint {
         let absSource = source.magnitude
+        guard absSource.isNormal else { return nil }
         guard absSource.rounded(.towardZero).isEqual(to: absSource) else { return nil }
         let integralPart = (absSource.significandBitPattern >> (T.significandBitCount - Int(absSource.exponent)))
         self.init(Self(integralPart | (1 << absSource.exponent)) * (source.sign.rawValue * -2 + 1))
@@ -193,15 +204,12 @@ extension ArbitraryInt: SignedInteger {
 
     // MARK: - Equatable and Comparable
     
-    /// `Equatable`. Digits by bitwise compare, and sign must match. (Checking
-    /// bit width requires extra work querying the storage array which just
-    /// slows things down versus equating it.)
+    /// See `Equatable.==`
     @inlinable public static func == (lhs: ArbitraryInt, rhs: ArbitraryInt) -> Bool {
-        return lhs.storage == rhs.storage && lhs.sign == rhs.sign
+        return lhs.sign == rhs.sign && lhs.storage == rhs.storage
     }
     
-    /// Comparison operator. Noticeably faster than the default implementation
-    /// via `BinaryInteger`.
+    /// See `Comparable.<`
     @inlinable public static func < (lhs: ArbitraryInt, rhs: ArbitraryInt) -> Bool {
         if lhs.sign && rhs.sign { return -rhs > -lhs } // if both negative, flip the compare
         if lhs.sign != rhs.sign { return lhs.sign } // if only one negative, the negative one is smaller
