@@ -45,6 +45,23 @@ extension ArbitraryInt {
             return (positiveBase ** exponent) % ArbitraryInt(modulus)
         }
     }
+    
+    /// Calculate the product of `self` and the value of `multiplier`, modulo
+    /// `modulus`, as efficiently as possible. Currently this unconditionally
+    /// performs a simple multiplication followed by a simple division with
+    /// remainder. The result is adjusted to always be positive, regardless of
+    /// the signs of any of the operands.
+    public func product<Multiplier, Modulus>(multipliedBy multiplier: Multiplier, modulo modulus: Modulus) -> Self
+        where Multiplier: BinaryInteger, Modulus: BinaryInteger
+    {
+        let product = self * multiplier
+        var congruentProduct = product % modulus
+        
+        if congruentProduct < .zero {
+            congruentProduct += modulus.magnitude
+        }
+        return congruentProduct
+    }
 
 }
 

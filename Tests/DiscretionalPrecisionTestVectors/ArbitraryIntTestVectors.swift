@@ -31,18 +31,6 @@ final class ArbitraryIntTests: XCTestCase {
 //            print("  Out = \(sum.debugDescription)")
             XCTAssertEqual(sum, vector.result, file: vector.file, line: vector.line)
         }
-        for (_, vector) in addVectors.enumerated() {
-            // Explicitly test the += variant.
-            var sum = vector.operands[0]
-            sum += vector.operands[1]
-            
-//            print("Vector \(i)/\(addVectors.count):")
-//            print("  A   = \(vector.operands[0].debugDescription)")
-//            print("  B   = \(vector.operands[1].debugDescription)")
-//            print("  Sum = \(vector.result.debugDescription)")
-//            print("  Out = \(sum.debugDescription)")
-            XCTAssertEqual(sum, vector.result, file: vector.file, line: vector.line)
-        }
     }
     
     func testProductVectors() throws {
@@ -76,11 +64,7 @@ final class ArbitraryIntTests: XCTestCase {
     
     func testModMulVectors() throws {
         for (_, vector) in modMulVectors.enumerated() {
-            var modularProduct = (vector.operands[0] * vector.operands[1]) % vector.operands[2]
-            
-            // TEMPORARY
-            #warning("Replace me with a real `modularProduct(with:modulo:)` method.")
-            modularProduct += (vector.operands[0].signum() != vector.operands[1].signum() && vector.operands[0].signum() != 0 ? vector.operands[2].magnitude : 0)
+            let modularProduct = vector.operands[0].product(multipliedBy: vector.operands[1], modulo: vector.operands[2])
             
 //            print("Vector \(i)/\(modMulVectors.count):")
 //            print("  A   = \(vector.operands[0].debugDescription)")
