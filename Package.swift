@@ -2,7 +2,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "DiscretionalPrecision",
+    name: "discretional-precision",
     products: [
         .library(name: "DiscretionalPrecision", targets: ["DiscretionalPrecision"]),
     ],
