@@ -72,7 +72,7 @@ extension ArbitraryInt {
         
         // Denormalize the remainder, normalize the quotient, and give it the correct sign.
         let λr = x, r = λr >> λ
-        let qq = ArbitraryInt(storage: q.normalized(), sign: self.sign != rhs.sign && q.normalized() != [0])
+        let qq = ArbitraryInt(normalizing: q, sign: self.sign != rhs.sign && q.firstIndex(where: { $0 != 0 }) != nil)
         
         debug(.Quot, state: ["λr": λr, "r": r, "q": q.hexEncodedString()])
         debug(.Quot, state: ["quotient": qq, "remainder": ArbitraryInt(storage: r.storage, sign: self.sign)])
@@ -198,7 +198,7 @@ extension ArbitraryInt {
         if carry != .zero { result.append(carry) }
         
         // Check consistency and return result
-        assert(result.normalized() == result)
+        assert(ArbitraryInt(normalizing: result, sign: false).storage.base == result)
         debug(.Sum, state: ["sum": ArbitraryInt(storage: result, sign: false)])
         return ArbitraryInt(storage: result, sign: false)
     }

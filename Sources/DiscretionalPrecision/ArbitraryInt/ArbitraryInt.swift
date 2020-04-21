@@ -14,15 +14,6 @@
 /// that `Strideable` refines `Comparable`.
 public struct ArbitraryInt {
     
-    /// Typealias for our internal storage, which does _not_ conform to the
-    /// expectations of `BinaryInteger.Words`, and is easier to type multiple
-    /// times than the array form, especially given the funky way Xcode insists
-    /// on "helping out" when typing delimiters of any kind. This, like the
-    /// storage itself, is `internal` instead of `private` to support the
-    /// splitting of the implementation across many files and to support the
-    /// storage being `@usableFromInline`.
-    @usableFromInline internal typealias Storage = Array<UInt>
-    
     /// The raw 64-bit "digits" in LSW->MSW order, representing in combination
     /// all the bits of the arbitrary-precision value. Each individual digit is
     /// stored in machine-native endianness (so, little endian). One of these
@@ -79,7 +70,7 @@ extension ArbitraryInt: SignedInteger {
     /// as that of its magnitude, so no extra consideration is required. For a
     /// zero value, we record it as 1 trailing zero bit.
     @inlinable public var trailingZeroBitCount: Int {
-        guard storage != [0] else { return 1 }
+        guard !storage.isZeroRepresentation else { return 1 }
         let firstNonzeroIndex = storage.firstIndex(where: { $0 != 0 })!
         return (firstNonzeroIndex << Self.radixBitShift) + storage[firstNonzeroIndex].trailingZeroBitCount
     }
@@ -88,12 +79,12 @@ extension ArbitraryInt: SignedInteger {
     /// which would recurse since we implement that in terms of negation. Make
     /// sure not to produce the illegal "negative zero" representation.
     @inlinable public mutating func negate() {
-        self.sign = self.storage == [0] ? false : !self.sign
+        self.sign = self.storage.isZeroRepresentation ? false : !self.sign
     }
     
     /// Override the default implementation of `signum()` because we can provide
     /// a more efficient answer than `(self > 0) - (self < 0)`.
-    @inlinable public func signum() -> ArbitraryInt { storage == [0] ? .zero : (sign ? -1 : 1) }
+    @inlinable public func signum() -> ArbitraryInt { storage.isZeroRepresentation ? .zero : (sign ? -1 : 1) }
     
     /// Magnitude is absolute value. Return a negated self if needed.
     @inlinable public var magnitude: ArbitraryInt { sign ? -self : self }
@@ -331,8 +322,9 @@ extension ArbitraryInt: SignedInteger {
     /// magnitude of the result is zero; "negative zero" is not a valid
     /// representation.
     public static func &= (lhs: inout ArbitraryInt, rhs: ArbitraryInt) {
-        lhs.storage = (0..<Swift.max(lhs.storage.count, rhs.storage.count)).map { lhs[infinite: $0] & rhs[infinite: $0] }.normalized()
-        lhs.sign = lhs.sign && rhs.sign && lhs != .zero
+        lhs = ArbitraryInt(
+            normalizing: (0..<Swift.max(lhs.storage.count, rhs.storage.count)).map { lhs[infinite: $0] & rhs[infinite: $0] },
+            sign: lhs.sign && rhs.sign && lhs != .zero)
     }
 
     /// Perform a bitwise OR operation of all significant bits of `lhs` with all
@@ -346,8 +338,9 @@ extension ArbitraryInt: SignedInteger {
     /// magnitude of the result is zero; "negative zero" is not a valid
     /// representation.
     public static func |= (lhs: inout ArbitraryInt, rhs: ArbitraryInt) {
-        lhs.storage = (0..<Swift.max(lhs.storage.count, rhs.storage.count)).map { lhs[infinite: $0] | rhs[infinite: $0] }.normalized()
-        lhs.sign = (lhs.sign || rhs.sign) && lhs != .zero
+        lhs = ArbitraryInt(
+            normalizing: (0..<Swift.max(lhs.storage.count, rhs.storage.count)).map { lhs[infinite: $0] | rhs[infinite: $0] },
+            sign: (lhs.sign || rhs.sign) && lhs != .zero)
     }
     
     /// Perform a bitwise XOR operation of all significant bits of `lhs` with all
@@ -361,8 +354,9 @@ extension ArbitraryInt: SignedInteger {
     /// magnitude of the result is zero; "negative zero" is not a valid
     /// representation.
     public static func ^= (lhs: inout ArbitraryInt, rhs: ArbitraryInt) {
-        lhs.storage = (0..<Swift.max(lhs.storage.count, rhs.storage.count)).map { lhs[infinite: $0] ^ rhs[infinite: $0] }.normalized()
-        lhs.sign = (lhs.sign != rhs.sign) && lhs != .zero
+        lhs = ArbitraryInt(
+            normalizing: (0..<Swift.max(lhs.storage.count, rhs.storage.count)).map { lhs[infinite: $0] ^ rhs[infinite: $0] },
+            sign: (lhs.sign || rhs.sign) && lhs != .zero)
     }
     
     // MARK: - GCD and LCM
