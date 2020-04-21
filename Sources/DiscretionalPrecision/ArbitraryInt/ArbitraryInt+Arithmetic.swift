@@ -26,7 +26,7 @@ extension ArbitraryInt {
         
         // Setup initial state and precalculated values
         let n = x.storage.endIndex - 1, t = y.storage.endIndex - 1
-        var q = Storage(repeating: 0, count: n - t + 1)
+        var q = Array<Storage.Element>(repeating: 0, count: n - t + 1)
         let ybnt = (y << ((n - t) << Self.radixBitShift))
         let y2 = t < 2 ? y.magnitude : ArbitraryInt(storage: t > 0 ? [y.storage[t - 1], y.storage[t]] : [y.storage[t]], sign: false)
         
@@ -50,11 +50,11 @@ extension ArbitraryInt {
                 q[j] = y.storage[t].dividingFullWidth((high: x[infinite: i], low: x[infinite: i - 1])).quotient.magnitude
                 debug(.Quot, state: ["q[j]": q[j].hexEncodedString()])
             }
-            let x3 = ArbitraryInt(storage: [
-                x.storage.indices.contains(i - 2) ? x.storage[i - 2] : 0,
-                x.storage.indices.contains(i - 1) ? x.storage[i - 1] : 0,
-                x.storage.indices.contains(i - 0) ? x.storage[i - 0] : 0,
-            ].normalized(), sign: false)
+            let x3 = ArbitraryInt(normalizing: [
+                i - 2 >= x.storage.startIndex && i - 2 < x.storage.endIndex ? x.storage[i - 2] : 0,
+                i - 1 >= x.storage.startIndex && i - 1 < x.storage.endIndex ? x.storage[i - 1] : 0,
+                i - 0 >= x.storage.startIndex && i - 0 < x.storage.endIndex ? x.storage[i - 0] : 0,
+            ], sign: false)
             debug(.Quot, state: ["x3=x[i-2...i]": x3])
             while ArbitraryInt(q[j]) * y2 > x3 {
                 q[j] -= 1
@@ -123,7 +123,7 @@ extension ArbitraryInt {
         }
         
         // Normalize output and decide sign
-        while w.last == 0 { w.removeLast() }
+        while w.last == 0 { _ = w.removeLast() }
         let product = ArbitraryInt(storage: w, sign: self.sign != rhs.sign)
         
         debug(.Prod, state: ["product": product])
@@ -163,7 +163,7 @@ extension ArbitraryInt {
         assert(borrow == .zero)
         
         // Drop all trailing zero digits of the results array, making sure to leave at least one.
-        while result.count > 1 && result.last == .zero { result.removeLast() }
+        while result.count > 1 && result.last == .zero { _ = result.removeLast() }
         
         // Return result as `ArbitraryInt`
         let difference = ArbitraryInt(storage: result, sign: false)
@@ -186,7 +186,7 @@ extension ArbitraryInt {
 
         // If we get here both operands are positive; setup initial state
         let n = self.storage.endIndex, t = rhs.storage.endIndex, z = Swift.max(n, t)
-        var result = Storage(repeating: 0, count: z), carry = Storage.Element.zero
+        var result = Array<Storage.Element>(repeating: 0, count: z), carry = Storage.Element.zero
         
         debug(.Sum, state: ["n": n, "t": t, "z": z])
         

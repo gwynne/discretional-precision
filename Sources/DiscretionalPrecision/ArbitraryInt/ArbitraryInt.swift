@@ -216,7 +216,7 @@ extension ArbitraryInt: SignedInteger {
         if rhs.storage.count > lhs.storage.count { return true }
         if lhs.storage.count > rhs.storage.count { return false }
         
-        for i in lhs.storage.indices.reversed() {
+        for i in stride(from: lhs.storage.endIndex - 1, through: lhs.storage.startIndex, by: -1) {
             if lhs.storage[i] != rhs.storage[i] { return lhs.storage[i] < rhs.storage[i] }
         }
         return false // they were equal, which means not less than
@@ -248,7 +248,7 @@ extension ArbitraryInt: SignedInteger {
         
         // Insert n / Storage.Element.bitSize digits at the start. Saves cascading potentially hundreds of bytes of data
         // and ensures the cascade logic never has to deal with more than one digit's worth of bits at a time.
-        lhs.storage.insert(contentsOf: Storage(repeating: 0, count: wholeDigitsShifted), at: lhs.storage.startIndex)
+        lhs.storage.insert(contentsOf: Array<Storage.Element>(repeating: 0, count: wholeDigitsShifted), at: lhs.storage.startIndex)
         lhs.debug(.LShift, state: ["whole": wholeDigitsShifted, "remBits": remainderBits])
         // If the remainder was zero, the shift count was an exact multiple of the word bit width, nothing to do!
         if remainderBits > 0 {
@@ -293,16 +293,31 @@ extension ArbitraryInt: SignedInteger {
             lhs.storage[w] >>= bitsDropped
         }
         // Drop all trailing zeroes, leaving at least one word in the result.
-        while lhs.storage.count > 1 && lhs.storage.last == .zero { lhs.storage.removeLast() }
+        while lhs.storage.count > 1 && lhs.storage.last == .zero { _ = lhs.storage.removeLast() }
         lhs.debug(.RShift, state: ["value": lhs])
     }
 
-    /// Unary NOT, flip every single bit. Since this type declares itself as
-    /// signed, emulation of two's complement behavior (which we have kept to in
-    /// all other operations) requires that the result be `-(x + 1)`, which is
-    /// not the same as flipping all the bits in our backing store.
+    /// Unary NOT, flip every single bit. This does not behave correctly with
+    /// respect to acting like a "real" `BinaryInteger`; it does not flip the
+    /// sign bit nor produce the 2's complement of the original value
+    /// numerically. However, it is the strictly correct bitwise operation as
+    /// defined by the implementation requirements of the protocol. As the bit
+    /// width is, of course, arbitrary, the flip is defined as applying to
+    /// exactly as many bits as are considered significant to the original
+    /// value. As such, `~ArbitraryInt(0)` produces `1` and vice versa, as if
+    /// operating on a single bit with no sign. Unfortunately, a result of this
+    /// property is that applying this operator to instances of `ArbitraryInt`
+    /// is not correctly reversible; ~(~2) produces `0`, not `2`. It is frankly
+    /// questionable what value a unary NOT operator can be said to have with
+    /// regards to an integer with no fixed width; it may be arguably considered
+    /// a bug that it is defined on `BinaryInteger` instead of
+    /// `FixedWidthInteger`. That in mind, the semantics herein described are
+    /// the closest it is reasonably possible for this implementation to
+    /// approach the operation `BinaryInteger` describes. `negate()` will,
+    /// perhaps ironically, have a much more "classical" effect inasmuch as the
+    /// 2's complement view provided by `Words` will be the expected one.
     @inlinable public static prefix func ~ (x: ArbitraryInt) -> ArbitraryInt {
-        return -(x + .one)
+        return ArbitraryInt(normalizing: x.storage.map { ~$0 }, sign: x.sign)
     }
 
     /// Perform a bitwise AND operation of all significant bits of `lhs` with

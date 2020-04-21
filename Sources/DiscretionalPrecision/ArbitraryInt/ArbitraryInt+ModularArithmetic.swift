@@ -159,7 +159,7 @@ extension ArbitraryInt {
             let u = (A.storage[0] &+ xi &* y0) &* mP // `u`'s value is taken mod `b`, which is the same as doing the math in single-precision
             
             A += (y * xi) + (m * u) // this is the most heavily loaded line of code in the entire codebase during, for example, an RSA encrypt
-            A.storage.removeFirst() // get the next A[0] value
+            _ = A.storage.removeFirst() // get the next A[0] value
             if A.storage.isEmpty { A = .zero } // fixup A
             
             debug(.ModMul, state: ["i": i, "x[i]": xi.hexEncodedString(), "u": u.hexEncodedString(), "A": A]) // latest state
