@@ -213,6 +213,18 @@ extension ArbitraryInt: SignedInteger {
         return false // they were equal, which means not less than
     }
     
+    /// Override the Self/BinaryInteger version of `<(_:_:)` so the comparison will be correctly performed.
+    @inlinable public static func < <T: BinaryInteger>(lhs: ArbitraryInt, rhs: T) -> Bool { lhs <  ArbitraryInt(rhs) }
+
+    /// Override the Self/BinaryInteger version of `<=(_:_:)` so the comparison will be correctly performed.
+    @inlinable public static func <= <T: BinaryInteger>(lhs: ArbitraryInt, rhs: T) -> Bool { lhs <= ArbitraryInt(rhs) }
+
+    /// Override the Self/BinaryInteger version of `>=(_:_:)` so the comparison will be correctly performed.
+    @inlinable public static func >= <T: BinaryInteger>(lhs: ArbitraryInt, rhs: T) -> Bool { lhs >= ArbitraryInt(rhs) }
+
+    /// Override the Self/BinaryInteger version of `>(_:_:)` so the comparison will be correctly performed.
+    @inlinable public static func >  <T: BinaryInteger>(lhs: ArbitraryInt, rhs: T) -> Bool { lhs >  ArbitraryInt(rhs) }
+
     // MARK: - Bitwise operators
     
     /// Shift the entire value of `lhs` left by `rhs` bits, zero-filling from
