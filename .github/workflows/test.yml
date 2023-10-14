@@ -16,6 +16,8 @@ jobs:
     runs-on: ubuntu-latest
     container: swift:5.9-jammy
     steps:
+      - name: Curl curl
+        run: apt update && apt upgrade -y && apt install -y curl
       - name: Checkout
         uses: actions/checkout@v4
       - name: Gen deps
