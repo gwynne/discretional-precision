@@ -20,4 +20,3 @@ jobs:
         uses: actions/checkout@v4
       - name: Gen deps
         uses: vapor/ci/.github/actions/generate-swift-dependencies@main
-        
