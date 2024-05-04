@@ -1,10 +1,10 @@
 # DiscretionalPrecision
 
 <p align="center">
-    <a href="https://github.com/gwynne/discretional-precision/LICENSE"><img src="https://img.shields.io/badge/license-MIT-skyblue?style=flat&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB2aWV3Qm94PSIwIDAgMTI4IDEyOCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBmaWxsPSIjZmZmIiBkPSJNNzAuNTQsMTEuNTJjLS4xLTMuODktMTEuOS0zLjg5LTEyLDB2MTBjLTUuMjcuMTgtMjAuMzYsNy44NS0yNC40Niw4aC0xOC4zOGMtMS42LDAtNS43NTcsMi40NS01LjY5LDYuMDhjLjEsNC41NCw0LjcxLDYuNjUsOS4xOSw1LjkyYzAsMC0xNC45NTcsMzMuMTgtMTYuODgsMzcuNTJjLTMuMzcyLDcuNjEsMTIuNDcsMTQuOTcsMjIuOSwxNC43MmMxMS44LS42LDI2LjEyLTcuMzEsMjIuODYtMTMuOTJjLTIuNS01LjA3LTE2LjY4LTM4LjMyLTE2LjY4LTM4LjMyYzUuNzEsMCwxOC4zNy03Ljg1LDI3LjE0LTh2NzYuNzhoLTIwYy0zLjkxLDAtMy45MSwxMiwwLDEyaDUyYzMuOTEsMCwzLjkxLTEyLDAtMTJoLTIwdi03Ni43OGM4LjctLjEsMjEuMTQsNy45NywyNy4zNCw4YzAsMC0xNC40MSwzMi44NC0xNi44OCwzOC4zMmMtMi43MSw2LDExLjYxLDEzLjkyLDIyLjksMTMuOTJjMTEuOCwwLDI2LjEtNi4zNywyMi45LTEzLjkyYy0yLjItNS4zMS0xNi45LTM4LjMyLTE2LjktMzguMzJjNC44LjQ1LDkuNi0xLjU3LDkuNi01LjkyYy0uMS00LjYtNC02LjA5LTYuMS02LjA4YzAsMC0yMi43OS0uMi0xOC40LDBjMCwwLTE4Ljk4LTcuOTQtMjQuNDYtOHptMzIuODYsNDQuNjQsMTAuNCwyNGMtMy44LDEuNzMtMTguNTksMS4xMi0yMC44NCwwem0tNzcuNywwLDEwLjQ0LDI0Yy04LjAyLDMuMjgtMTUuMDEsMi45MS0yMC44NCwwYzAsMCwxMC4zNi0yMy45NiwxMC40LTI0eiIvPjwvc3ZnPgo%3D" alt="MIT License"></a>
-    <a href="https://swift.org"><img src="https://img.shields.io/badge/swift-5.2%20--%205.9-white?style=flat&logo=swift&logoColor=%23f07158&labelColor=gray&color=%23f07158" alt="Swift 5.2 - 5.9"></a>
-    <a href="https://github.com/gwynne/discretional-precision/actions/workflows/test.yml"><img src="https://github.com/gwynne/discretional-precision/actions/workflows/test.yml/badge.svg?event=push" alt="Continuous Integration"></a>
-    <a href="https://codecov.io/gh/gwynne/discretional-precision"><img src="https://codecov.io/gh/gwynne/discretional-precision/branch/main/graph/badge.svg?token=5A48CWFHRS" alt="Codecov"></a>
+    <a href="https://github.com/gwynne/discretional-precision/LICENSE"><img src="https://design.vapor.codes/images/mitlicense.svg" alt="MIT License"></a>
+    <a href="https://swift.org"><img src="https://img.shields.io/badge/swift-5.2%20--%205.10-white?style=plastic&logo=swift&logoColor=%23f07158&labelColor=gray&color=%23f07158" alt="Swift 5.2 - 5.9"></a>
+    <a href="https://github.com/gwynne/discretional-precision/actions/workflows/test.yml"><img src="https://img.shields.io/github/actions/workflow/status/gwynne/discretional-precision/test.yml?event=push&style=plastic&logo=github&label=tests&logoColor=%23ccc" alt="Continuous Integration"></a>
+    <a href="https://codecov.io/gh/gwynne/discretional-precision"><img src="https://img.shields.io/codecov/c/github/vapor/fluent-kit?style=plastic&logo=codecov&label=codecov&token=5A48CWFHRS" alt="Codecov"></a>
 </p>
 
 An implementation of arbitrary-precision signed integers, arithmetic operations upon them, and a bunch of bits and bobs alongside.
