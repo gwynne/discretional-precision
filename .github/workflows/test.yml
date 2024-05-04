@@ -11,15 +11,5 @@ jobs:
      uses: vapor/ci/.github/workflows/run-unit-tests.yml@main
      with:
        with_tsan: false
-  submit-deps:
-    if: github.event_name == 'push'
-    runs-on: ubuntu-latest
-    container: swift:5.9-jammy
-    steps:
-      - name: Curl curl
-        run: apt update && apt upgrade -y && apt install -y curl
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Gen deps
-        uses: vapor/ci/.github/actions/generate-swift-dependencies@main
-
+     secrets:
+       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
